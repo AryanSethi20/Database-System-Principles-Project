@@ -4,3 +4,4 @@ pyperclip==1.8.2
 tk==0.1.0
 tklinenums==1.7.1
 toml==0.10.2
+python-dotenv==1.0.0
