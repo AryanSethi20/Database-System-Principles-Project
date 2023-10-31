@@ -17,6 +17,9 @@ for filename in os.listdir(tbl_folder):
             # Read the data from the .tbl file and write it to the .csv file
             for line in tbl:
                 row = line.strip().split('|')
+                row = row[:-1]
+                #print(row)
                 csv.write(','.join(row) + '\n')
+                #break
 
         print(f'Conversion of {filename} complete. Data has been written to {csv_file}')

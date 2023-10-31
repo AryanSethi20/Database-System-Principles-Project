@@ -32,6 +32,26 @@ tablespace pg_default;
 alter table public.region
     owner to postgres;
 --
+create table public.part
+(
+    p_partkey integer not null,
+    p_name character varying(55) collate pg_catalog."default" not null,
+    p_mfgr character(25) collate pg_catalog."default" not null,
+    p_brand character(10) collate pg_catalog."default" not null,
+    p_type character varying(25) collate pg_catalog."default" not null,
+    p_size integer not null,
+    p_container character (10) collate pg_catalog."default" not null,
+    p_retailprice numeric(15,2) not null,
+    p_comment character varying(23) collate pg_catalog."default" not null,
+    constraint part_pkey primary key (p_partkey)
+)
+with(
+    oids = false
+)
+tablespace pg_default;
+alter table public.part
+    owner to postgres;
+--
 create table public.supplier
 (
     s_suppkey integer not null,
@@ -42,8 +62,8 @@ create table public.supplier
     s_acctbal numeric(15,2) not null,
     s_comment character varying(101) collate pg_catalog."default" not null,
     constraint supplier_pkey primary key (s_suppkey),
-    constraint fk_supplier foreign key (s_nationeky)
-        reference public.nation(n_nationkey) match simple
+    constraint fk_supplier foreign key (s_nationkey)
+        references public.nation(n_nationkey) match simple
         on update no action
         on delete no action
 )
@@ -52,7 +72,7 @@ with(
 )
 tablespace pg_default;
 alter table public.supplier
-    ownwer to postgres;
+    owner to postgres;
 --
 create table public.partsupp
 (
@@ -60,7 +80,7 @@ create table public.partsupp
     ps_suppkey integer not null,
     ps_availqty integer not null,
     ps_supplycost numeric(15,2) not null,
-    ps_comment character varying(199) colalte pg_catalog."default" not null,
+    ps_comment character varying(199) collate pg_catalog."default" not null,
     constraint partsupp_pkey primary key (ps_partkey, ps_suppkey),
     constraint fk_ps_suppkey_partkey FOREIGN key (ps_partkey)
         references public.part(p_partkey) match simple
@@ -125,24 +145,23 @@ create table public.orders
 (
     o_orderkey integer not null,
     o_custkey integer not null,
-    o_orderstatus character(1) collage pg_catalog."default" not null,
-    o_orderprice numeric(15,2) not null,
+    o_orderstatus character(1) collate pg_catalog."default" not null,
+    o_totalprice numeric(15,2) not null,
     o_orderdate date not null,
-    o_orderpriority character(15) collage pg_catalog."default" not null,
+    o_orderpriority character(15) collate pg_catalog."default" not null,
     o_clerk character(15) collate pg_catalog."default" not null,
-    o_shippriority integer not null,
+    o_shipprority integer not null,
     o_comment character varying(79) collate pg_catalog."default" not null,
     constraint orders_pkey primary key (o_orderkey),
     constraint fk_orders foreign key (o_custkey)
-        references public.customer (c_custkey) match simple
-        on update no action   
-        on delete no action   
+        references public.customer(c_custkey) match simple
+        on update no action
+        on delete no action
 )
 with(
-    oids = false   
+    oids = false
 )
 tablespace pg_default;
-
 alter table public.orders
     owner to postgres;
 --
