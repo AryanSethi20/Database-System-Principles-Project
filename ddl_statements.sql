@@ -123,13 +123,13 @@ create table public.orders
     o_custkey integer not null,
     o_orderstatus character(1) collate pg_catalog."default" not null,
     o_totalprice numeric(15,2) not null,
-    o_orderdate not null,
+    o_orderdate date not null,
     o_orderpriority character(15) collate pg_catalog."default" not null,
     o_clerk character(15) collate pg_catalog."default" not null,
     o_shipprority integer not null,
     o_comment character varying(79) collate pg_catalog."default" not null,
     constraint orders_pkey primary key (o_orderkey),
-    constraint fk_orders primary key (o_custkey)
+    constraint fk_orders foreign key (o_custkey)
         references public.customer(c_custkey) match simple
         on update no action
         on delete no action
