@@ -127,7 +127,7 @@ def create_query_window():
 
     window = tk.Tk()
     window.geometry("700x580")
-    window.title("Database")
+    window.title("PostgreSQL Database")
     window.config(bg = 'white')
 
     querypanel = tk.PanedWindow(bg='white')
