@@ -2,37 +2,8 @@ import tkinter as tk
 import customtkinter as ctk
 from explore import *
 import psycopg2
-import json
 
-def login():
-    global port
-    global host
-    global database
-    global user
-    global password
-    
-    port = port_entry.get()
-    host = host_entry.get()
-    database = database_entry.get()
-    user = user_entry.get()
-    password = password_entry.get()
-
-    try:
-        conn = psycopg2.connect(
-            port=port,
-            host=host,
-            database=database,
-            user=user,
-            password=password
-        )
-        conn.close()
-        login_window.destroy()
-        create_query_window()
-
-    except psycopg2.Error as e:
-        error_label.config(text=f"Error: {e}", fg="red")
-
-def create_login_window():
+def createLoginWindow():
     global login_window
     global port_entry
     global host_entry
@@ -43,7 +14,7 @@ def create_login_window():
 
     login_window = tk.Tk()
     login_window.title("Login to PostgreSQL")
-    login_window.geometry('330x480')
+    login_window.geometry('320x480')
     login_window.config(bg='white')
     
     frame = ctk.CTkFrame(login_window, fg_color='white')
@@ -87,46 +58,42 @@ def create_login_window():
 
     login_window.mainloop()
 
-def submit_query():
-    query = user_query.get('1.0', 'end-1c')
-    qep_panel_text.configure(state='normal')
-    qep_panel_text.delete('1.0', 'end-1c')
+def login():
+    global port
+    global host
+    global database
+    global user
+    global password
+    
+    port = port_entry.get()
+    host = host_entry.get()
+    database = database_entry.get()
+    user = user_entry.get()
+    password = password_entry.get()
 
-    if not query:
-        qep_panel_text.insert(tk.END, "Please submit SQL query\n")
-        qep_panel_text.config(fg='red')
-        qep_panel_text.configure(state='disabled')
+    try:
+        conn = psycopg2.connect(
+            port=port,
+            host=host,
+            database=database,
+            user=user,
+            password=password
+        )
+        conn.close()
+        login_window.destroy()
+        createQueryWindow()
 
-    else:
-        x = runQuery(query, port, host, database, user, password)
-        if not x:
-            qep_panel_text.config(fg='red')
-            qep_panel_text.insert(tk.END, "Please check your SQL query")
-            qep_panel_text.configure(state='disabled')
-        else:
-            annotated_query = startAnnotation()
-            qep_panel_text.config(fg='black')
-            qep_panel_text.insert(tk.END,annotated_query[0])
-        qep_panel_text.configure(state='disabled')
+    except psycopg2.Error as e:
+        error_label.config(text=f"Error: {e}", fg="red")
 
-def clearQueries():
-    qep_panel_text.configure(state='normal')
-    qep_panel_text.delete('1.0', 'end-1c')
-    qep_panel_text.configure(state='disabled')
-    user_query.delete('1.0','end-1c')
-    clearAnnotation()
-
-def create_query_window():
+def createQueryWindow():
     global window
     global user_query
     global qep_panel_text
-    global leftPanel_text
-    global centrePanel_text
-    global rightPanel_text
     global error_label
 
     window = tk.Tk()
-    window.geometry("700x580")
+    window.geometry("720x600")
     window.title("PostgreSQL Database")
     window.config(bg = 'white')
 
@@ -140,30 +107,59 @@ def create_query_window():
 
     div = tk.PanedWindow(bg='white')
 
-    submitButton = ctk.CTkButton(div, text='Submit', text_color = 'white', fg_color = '#04c256', hover_color = '#024d23', font=('Arial', 12), width = 200, command=submit_query)
+    submitButton = ctk.CTkButton(div, text='Submit', text_color = 'white', fg_color = '#04c256', hover_color = '#024d23', font=('Arial', 12), width = 200, command=submitQuery)
     submitButton.pack(side=tk.LEFT, padx=5)
     
     div.pack(pady=5)
 
-    annotatedPanel = tk.PanedWindow(bg= 'white')
-    annotatedPanel_label = ctk.CTkLabel(annotatedPanel, text="Query Execution Plan In Natural Language", font=('Arial', 20, 'bold'), text_color='black')
-    annotatedPanel_label.pack(pady=5)
-    annotatedPanel.pack()
+    qep_panel = tk.PanedWindow(bg= 'white')
+    qep_panel_label = ctk.CTkLabel(qep_panel, text="Query Execution Plan In Natural Language", font=('Arial', 20, 'bold'), text_color='black')
+    qep_panel_label.pack(pady=5)
+    qep_panel.pack()
 
-    qep_panel_text = tk.Text(annotatedPanel, state='disabled', height=14, relief='solid', wrap='word', font=('Arial', 10), bg = '#D3D3D3', width = 80)
+    qep_panel_text = tk.Text(qep_panel, state='disabled', height=14, relief='solid', wrap='word', font=('Arial', 10), bg = '#D3D3D3', width = 80)
     qep_panel_text.pack()
 
     div1 = tk.PanedWindow(bg='white')
 
-    qeptreebtn = ctk.CTkButton(div1, text="View QEP Tree", text_color = "white", fg_color = '#24a0ed', hover_color = '#237fb7', font=('Arial', 12), width = 200,command=createQEPTreeDiagram)
+    qeptreebtn = ctk.CTkButton(div1, text="View QEP Tree", text_color = "white", fg_color = '#24a0ed', hover_color = '#237fb7', font=('Arial', 12), width = 200,command=createQEPTree)
     qeptreebtn.pack(side=tk.LEFT)
 
-    clearbtn = ctk.CTkButton(div1, text="Reset", text_color = "white", fg_color = '#c20411', hover_color = '#5c040a',font=('Arial', 12), width = 200, command=clearQueries)
+    clearbtn = ctk.CTkButton(div1, text="Reset", text_color = "white", fg_color = '#c20411', hover_color = '#5c040a',font=('Arial', 12), width = 200, command=deleteQueries)
     clearbtn.pack(side= tk.LEFT, padx=5)
     
     div1.pack(pady=5)
 
     window.mainloop()
 
+def submitQuery():
+    query = user_query.get('1.0', 'end-1c')
+    qep_panel_text.configure(state='normal')
+    qep_panel_text.delete('1.0', 'end-1c')
+
+    if not query:
+        qep_panel_text.insert(tk.END, "Invalid Entry\n")
+        qep_panel_text.config(fg='red')
+        qep_panel_text.configure(state='disabled')
+
+    else:
+        x = executeQuery(query, port, host, database, user, password)
+        if not x:
+            qep_panel_text.config(fg='red')
+            qep_panel_text.insert(tk.END, "Check your SQL query")
+            qep_panel_text.configure(state='disabled')
+        else:
+            annotated_query = beginQEPAnnotation()
+            qep_panel_text.config(fg='black')
+            qep_panel_text.insert(tk.END,annotated_query[0])
+        qep_panel_text.configure(state='disabled')
+
+def deleteQueries():
+    qep_panel_text.configure(state='normal')
+    qep_panel_text.delete('1.0', 'end-1c')
+    qep_panel_text.configure(state='disabled')
+    user_query.delete('1.0','end-1c')
+    deleteQEPAnnotation()
+
 if __name__ == "__main__":
-    create_login_window()
+    createLoginWindow()
