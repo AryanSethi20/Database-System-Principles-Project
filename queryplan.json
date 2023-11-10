@@ -3,35 +3,110 @@
     [
       {
         "Plan": {
-          "Node Type": "Seq Scan",
+          "Node Type": "Hash Join",
           "Parallel Aware": false,
           "Async Capable": false,
-          "Relation Name": "orders",
-          "Schema": "public",
-          "Alias": "orders",
-          "Startup Cost": 0.0,
-          "Total Cost": 28749.76,
-          "Plan Rows": 1048576,
-          "Plan Width": 107,
-          "Actual Startup Time": 0.031,
-          "Actual Total Time": 86.915,
-          "Actual Rows": 1048576,
+          "Join Type": "Inner",
+          "Startup Cost": 6599.12,
+          "Total Cost": 39044.22,
+          "Plan Rows": 245263,
+          "Plan Width": 31,
+          "Actual Startup Time": 59.157,
+          "Actual Total Time": 259.125,
+          "Actual Rows": 247404,
           "Actual Loops": 1,
           "Output": [
-            "o_orderkey",
-            "o_custkey",
-            "o_orderstatus",
-            "o_totalprice",
-            "o_orderdate",
-            "o_orderpriority",
-            "o_clerk",
-            "o_shippriority",
-            "o_comment"
+            "orders.o_orderkey",
+            "orders.o_orderdate",
+            "customer.c_custkey",
+            "customer.c_name"
+          ],
+          "Inner Unique": true,
+          "Hash Cond": "(orders.o_custkey = customer.c_custkey)",
+          "Plans": [
+            {
+              "Node Type": "Seq Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Relation Name": "orders",
+              "Schema": "public",
+              "Alias": "orders",
+              "Startup Cost": 0.0,
+              "Total Cost": 31371.2,
+              "Plan Rows": 409090,
+              "Plan Width": 12,
+              "Actual Startup Time": 0.053,
+              "Actual Total Time": 132.268,
+              "Actual Rows": 412692,
+              "Actual Loops": 1,
+              "Output": [
+                "orders.o_orderkey",
+                "orders.o_custkey",
+                "orders.o_orderstatus",
+                "orders.o_totalprice",
+                "orders.o_orderdate",
+                "orders.o_orderpriority",
+                "orders.o_clerk",
+                "orders.o_shippriority",
+                "orders.o_comment"
+              ],
+              "Filter": "(orders.o_orderdate >= '1996-01-01'::date)",
+              "Rows Removed by Filter": 635884
+            },
+            {
+              "Node Type": "Hash",
+              "Parent Relationship": "Inner",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 5475.0,
+              "Total Cost": 5475.0,
+              "Plan Rows": 89930,
+              "Plan Width": 23,
+              "Actual Startup Time": 58.972,
+              "Actual Total Time": 58.972,
+              "Actual Rows": 89923,
+              "Actual Loops": 1,
+              "Output": [
+                "customer.c_custkey",
+                "customer.c_name"
+              ],
+              "Hash Buckets": 131072,
+              "Original Hash Buckets": 131072,
+              "Hash Batches": 1,
+              "Original Hash Batches": 1,
+              "Peak Memory Usage": 5854,
+              "Plans": [
+                {
+                  "Node Type": "Seq Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Relation Name": "customer",
+                  "Schema": "public",
+                  "Alias": "customer",
+                  "Startup Cost": 0.0,
+                  "Total Cost": 5475.0,
+                  "Plan Rows": 89930,
+                  "Plan Width": 23,
+                  "Actual Startup Time": 0.007,
+                  "Actual Total Time": 49.94,
+                  "Actual Rows": 89923,
+                  "Actual Loops": 1,
+                  "Output": [
+                    "customer.c_custkey",
+                    "customer.c_name"
+                  ],
+                  "Filter": "(customer.c_nationkey >= 10)",
+                  "Rows Removed by Filter": 60077
+                }
+              ]
+            }
           ]
         },
-        "Planning Time": 1.139,
+        "Planning Time": 3.073,
         "Triggers": [],
-        "Execution Time": 101.345
+        "Execution Time": 263.482
       }
     ]
   ]

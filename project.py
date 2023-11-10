@@ -125,7 +125,7 @@ def createQueryWindow():
     qeptreebtn = ctk.CTkButton(div1, text="View QEP Tree", text_color = "white", fg_color = '#24a0ed', hover_color = '#237fb7', font=('Arial', 12), width = 200,command=createQEPTree)
     qeptreebtn.pack(side=tk.LEFT)
 
-    clearbtn = ctk.CTkButton(div1, text="Reset", text_color = "white", fg_color = '#c20411', hover_color = '#5c040a',font=('Arial', 12), width = 200, command=deleteQueries)
+    clearbtn = ctk.CTkButton(div1, text="Reset", text_color = "white", fg_color = '#c20411', hover_color = '#5c040a',font=('Arial', 12), width = 200, command=deleteQuery)
     clearbtn.pack(side= tk.LEFT, padx=5)
     
     div1.pack(pady=5)
@@ -154,7 +154,7 @@ def submitQuery():
             qep_panel_text.insert(tk.END,annotated_query[0])
         qep_panel_text.configure(state='disabled')
 
-def deleteQueries():
+def deleteQuery():
     qep_panel_text.configure(state='normal')
     qep_panel_text.delete('1.0', 'end-1c')
     qep_panel_text.configure(state='disabled')
