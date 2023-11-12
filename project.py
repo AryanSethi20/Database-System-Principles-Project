@@ -90,15 +90,16 @@ def createQueryWindow():
     global window
     global user_query
     global qep_panel_text
+    global analyze_panel_text
     global error_label
 
     window = tk.Tk()
-    window.geometry("720x600")
+    window.geometry("720x6800")
     window.title("PostgreSQL Database")
     window.config(bg = 'white')
 
     querypanel = tk.PanedWindow(bg='white')
-    querypanel_label = ctk.CTkLabel(querypanel, text="SQL Query", font=('Arial', 20, 'bold'), text_color='black')
+    querypanel_label = ctk.CTkLabel(querypanel, text="SQL Query", font=('Arial', 16, 'bold'), text_color='black')
     querypanel_label.pack(pady=5)
     querypanel.pack()
 
@@ -113,22 +114,34 @@ def createQueryWindow():
     div.pack(pady=5)
 
     qep_panel = tk.PanedWindow(bg= 'white')
-    qep_panel_label = ctk.CTkLabel(qep_panel, text="Query Execution Plan In Natural Language", font=('Arial', 20, 'bold'), text_color='black')
+    qep_panel_label = ctk.CTkLabel(qep_panel, text="Query Execution Plan In Natural Language", font=('Arial', 16, 'bold'), text_color='black')
     qep_panel_label.pack(pady=5)
     qep_panel.pack()
 
-    qep_panel_text = tk.Text(qep_panel, state='disabled', height=14, relief='solid', wrap='word', font=('Arial', 10), bg = '#D3D3D3', width = 80)
+    qep_panel_text = tk.Text(qep_panel, state='disabled', height=9, relief='solid', wrap='word', font=('Arial', 10), bg = '#FFFFCC', width = 80)
     qep_panel_text.pack()
 
     div1 = tk.PanedWindow(bg='white')
 
     qeptreebtn = ctk.CTkButton(div1, text="View QEP Tree", text_color = "white", fg_color = '#24a0ed', hover_color = '#237fb7', font=('Arial', 12), width = 200,command=createQEPTree)
     qeptreebtn.pack(side=tk.LEFT)
-
-    clearbtn = ctk.CTkButton(div1, text="Reset", text_color = "white", fg_color = '#c20411', hover_color = '#5c040a',font=('Arial', 12), width = 200, command=deleteQuery)
-    clearbtn.pack(side= tk.LEFT, padx=5)
     
     div1.pack(pady=5)
+
+    analyze_panel = tk.PanedWindow(bg= 'white')
+    analyze_panel_label = ctk.CTkLabel(analyze_panel, text="Query Analysis", font=('Arial', 16, 'bold'), text_color='black')
+    analyze_panel_label.pack(pady=5)
+    analyze_panel.pack()
+
+    analyze_panel_text = tk.Text(analyze_panel, state='disabled', height=9, relief='solid', wrap='word', font=('Arial', 10), bg = '#FFFFCC', width = 80)
+    analyze_panel_text.pack()
+
+    div2 = tk.PanedWindow(bg='white')
+
+    clearbtn = ctk.CTkButton(div2, text="Reset", text_color = "white", fg_color = '#c20411', hover_color = '#5c040a',font=('Arial', 12), width = 200, command=deleteQuery)
+    clearbtn.pack(side= tk.LEFT, padx=5)
+    
+    div2.pack(pady=5)
 
     window.mainloop()
 
@@ -149,9 +162,12 @@ def submitQuery():
             qep_panel_text.insert(tk.END, "Check your SQL query")
             qep_panel_text.configure(state='disabled')
         else:
-            annotated_query = beginQEPAnnotation()
+            annotated_query = QEPAnnotation()
             qep_panel_text.config(fg='black')
             qep_panel_text.insert(tk.END,annotated_query[0])
+            analyze_query = QEPAnalysis()
+            analyze_panel_text.configure(state='normal')
+            analyze_panel_text.insert(tk.END,analyze_query)
         qep_panel_text.configure(state='disabled')
 
 def deleteQuery():
