@@ -65,8 +65,20 @@ top_level_plans = data['Plan']['Plans']
 for i, top_level_plan in enumerate(top_level_plans):
     process_plan(top_level_plan, [i + 1])
 
-# Additional analysis
-print("\nQuery Analysis:")
+# Most Expensive and Least Expensive Steps
+print("\nMost Expensive Steps:")
+for node_type, actual_time, current_path in [mostexp]:
+    print(f"Node Type: {node_type} ({current_path}), Actual Total Time: {actual_time}")
+
+print("\nLeast Expensive Steps:")
+for node_type, actual_time, current_path in [leastexp]:
+    print(f"Node Type: {node_type} ({current_path}), Actual Total Time: {actual_time}")
+
+# Print the total difference
+print(f"\nTotal Difference between Estimated and Actual Time [Estimated - Actual]: {round(totaldiff, 3)}")
+    
+# Additional query analysis
+print("\nAdditional Query Analysis:\n")
 print(f"Total number of plans: {total_plans}")
 
 # Node counts for each node type
@@ -79,13 +91,3 @@ print("\nAverage Actual Total Time:")
 for node_type, total_time in total_actual_time.items():
     average_time = total_time / node_counts[node_type]
     print(f"{node_type}: {round(average_time, 3)}")
-
-# Print the results
-print("\nMost Expensive Step:")
-print(f"Node Type: {mostexp[0]} ({mostexp[2]}), Actual Total Time: {mostexp[1]}")
-
-print("\nLeast Expensive Step:")
-print(f"Node Type: {leastexp[0]} ({leastexp[2]}), Actual Total Time: {leastexp[1]}")
-
-# Print the total difference
-print(f"\nTotal Difference between Estimated and Actual Time [Estimated - Actual]: {round(totaldiff, 3)}")
