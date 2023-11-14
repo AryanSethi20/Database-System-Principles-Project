@@ -5,6 +5,7 @@ import psycopg2
 import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from networkx.drawing.nx_pydot import graphviz_layout
 
 operatorSeq = []
 parents = []
@@ -348,10 +349,15 @@ def createQEPTree():
         return graph
 
     def visualize_tree(graph):
-        pos = nx.spring_layout(graph, seed=42)  # Use spring_layout as an alternative
-        labels = nx.get_node_attributes(graph, 'label')
+        # pos = nx.spring_layout(graph, seed=42)  # Use spring_layout as an alternative
+        # pos = nx.nx_pydot.pydot_layout(graph, prog="dot")  # Use spring_layout as an alternative
+        pos = graphviz_layout(graph, prog='dot')
+        #FIXME: this works but it's a bit bugged still
+        #graph = graph.reverse(copy=True)
         
         root_node = [node for node, in_degree in graph.in_degree() if in_degree == 0]
+        labels = nx.get_node_attributes(graph, 'label')
+        
         leaf_nodes = [node for node, out_degree in graph.out_degree() if out_degree == 0]
         
         node_colors = ['red' if node == root_node[0] else 'green' if node in leaf_nodes else 'skyblue' for node in graph.nodes]
