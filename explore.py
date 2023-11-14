@@ -1,11 +1,15 @@
 import json
 import psycopg2
+import networkx as nx
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 operatorSeq = []
 parents = []
 info = []
 time = []
 annotations = []
+analysisList = []
 queryplanjson = "queryplan.json"
 
 def QEPAnnotation():
@@ -20,6 +24,7 @@ def deleteQEPAnnotation():
     info.clear()
     time.clear()
     annotations.clear()
+    analysisList.clear()
 
 def getQEP(filename):
     with open(f"{filename}") as file:
@@ -176,14 +181,38 @@ def getQEPAnnotation():
 
 def QEPAnalysis():
     analysis = ''
-    mostExNode, mostExTime, leastExNode, leastExTime, diff = analyze_execution_plan(queryplanjson)
-    analysis += f"Execution Time = {executionTime} ms\n"
-    analysis += f"Planning Time = {planningTime} ms\n"
-    analysis += f"Total Cost = {totalCost}\n"
-    analysis += f"Most Expensive Step = {mostExNode} with Actual Total Time = {mostExTime} ms\n"
-    analysis += f"Least Expensive Step = {leastExNode} with Actual Total Time = {leastExTime} ms\n"
-    analysis += f"Total Difference between Estimated and Actual Time [Estimated - Actual] = {diff} ms\n"
-    annotations.append(analysis)
+    analysis += f"Execution Time = {executionTime} ms, "
+    analysis += f"Planning Time = {planningTime} ms, "
+    analysis += f"Total Cost = {totalCost}"
+    results = analyze_execution_plan(queryplanjson)
+
+    if results['most_expensive'] is not None and results['least_expensive'] is not None:
+        # Display the results
+        analysis += "\nMost expensive step is "
+        analysis += f"{results['most_expensive'][0]} (Path: {results['most_expensive'][2]}) with "
+        analysis += f"actual total time of {results['most_expensive'][1]}ms." 
+
+        analysis += "\nLeast expensive step is "
+        analysis += f"{results['least_expensive'][0]} (Path: {results['least_expensive'][2]}) with "
+        analysis += f"actual total time of {results['least_expensive'][1]}ms."
+
+        # Print the total difference
+        analysis += f"\nTotal difference between estimated and actual time is {results['total_difference']}ms"
+
+        # Additional query analysis
+        analysis += f"\nTotal number of plans: {results['total_plans']} ["
+        for node_type, count in results['node_counts'].items():
+            analysis += f"{count} {node_type}, "
+        analysis = analysis.rstrip(', ')
+        analysis += "]"
+
+        # Average actual total time for each node type
+        analysis += "\nAverage actual total time: "
+        for node_type, average_time in results['average_actual_time'].items():
+            analysis += f"{average_time}ms for {node_type}, "
+        analysis = analysis.rstrip(', ')
+
+    #analysisList.append(analysis)    
     return analysis
 
 def analyze_execution_plan(json_file_path):
@@ -199,61 +228,66 @@ def analyze_execution_plan(json_file_path):
     leastexp = None
     totaldiff = 0
 
+    # Additional attributes for analysis
+    total_plans = 0
+    node_counts = {}
+    total_actual_time = {}
+
     # Function to traverse the nested structure and extract information
-    def process_plan(plan):
-        nonlocal mostexp, leastexp, totaldiff
+    def process_plan(plan, path=[]):
+        nonlocal mostexp, leastexp, totaldiff, total_plans, node_counts, total_actual_time
 
         if 'Plans' in plan:
             # Recursively process each child plan
             child_plans = plan['Plans']
-            for child_plan in child_plans:
-                process_plan(child_plan)
+            for i, child_plan in enumerate(child_plans):
+                process_plan(child_plan, path + [i + 1])
+
+        total_plans += 1
 
         node_type = plan.get('Node Type', '')
         actual_total_time = round(plan.get('Actual Total Time', 0), 3)
         estimated_total_time = round(plan.get('Total Cost', 0), 3)
 
-        print(f"\nNode Type: {node_type}, Estimated Total Time: {estimated_total_time}, Actual Total Time: {actual_total_time} ")
+        current_path = '.'.join(map(str, path))
+        
+        # Update node counts
+        node_counts[node_type] = node_counts.get(node_type, 0) + 1
+
+        # Update total actual time for each node type
+        total_actual_time[node_type] = total_actual_time.get(node_type, 0) + actual_total_time
 
         # The most expensive step
         if mostexp is None or actual_total_time > mostexp[1]:
-            mostexp = (node_type, actual_total_time)
+            mostexp = (node_type, actual_total_time, current_path)
 
         # The least expensive step
         if leastexp is None or actual_total_time < leastexp[1]:
-            leastexp = (node_type, actual_total_time)
+            leastexp = (node_type, actual_total_time, current_path)
 
-        # Difference in estimated total time and actual total time as well as and printing the respective output
+        # Difference in estimated total time and actual total time
         diff = round(estimated_total_time - actual_total_time, 3)
-        print(f"Difference for {node_type}: {diff}")
 
         # Calculating the total difference
         totaldiff += diff
 
     # Traverse the top-level plans
-    top_level_plans = data[0][0][0]['Plan']['Plans']
-    for top_level_plan in top_level_plans:
-        process_plan(top_level_plan)
+    if "Plans" in data[0][0][0]['Plan']:
+        top_level_plans = data[0][0][0]['Plan']['Plans']
+        for i, top_level_plan in enumerate(top_level_plans):
+            process_plan(top_level_plan, [i + 1])
 
-    # Print the results
-    print("\nMost Expensive Step:")
-    print(f"Node Type: {mostexp[0]}, Actual Total Time: {mostexp[1]}")
+    # Return the results
+    results = {
+        'most_expensive': mostexp,
+        'least_expensive': leastexp,
+        'total_difference': round(totaldiff, 3),
+        'total_plans': total_plans,
+        'node_counts': node_counts,
+        'average_actual_time': {node_type: round(total_time / node_counts[node_type], 3) for node_type, total_time in total_actual_time.items()}
+    }
 
-    mostExpNodeType = mostexp[0]
-    mostExpActualTotalTime = mostexp[1]
-
-    print("\nLeast Expensive Step:")
-    print(f"Node Type: {leastexp[0]}, Actual Total Time: {leastexp[1]}")
-
-    leastExpNodeType = leastexp[0]
-    leastExpActualTotalTime = leastexp[1]
-
-    # Print the total difference
-    print(f"\nTotal Difference between Estimated and Actual Time [Estimated - Actual]: {round(totaldiff, 3)}")
-
-    totalDifference = round(totaldiff, 3)
-
-    return mostExpNodeType, mostExpActualTotalTime, leastExpNodeType, leastExpActualTotalTime, totalDifference
+    return results
 
 def executeQuery(text, port_value, host_value, database_value, user_value, password_value):
     try:
@@ -269,19 +303,68 @@ def executeQuery(text, port_value, host_value, database_value, user_value, passw
         queryOutput = cursor.fetchall()
         queryExecuted = True
         cursor.close()
+        with open('queryplan.json', 'w') as f:
+            json.dump(queryOutput, f, ensure_ascii=False, indent=2)
+    
     except(Exception, psycopg2.DatabaseError) as error:
         queryExecuted = False
 
-    with open('queryplan.json', 'w') as f:
-        json.dump(queryOutput, f, ensure_ascii=False, indent=2)
-
     return queryExecuted
 
-# function to create the QEP Tree Diagram TO-DO
 def createQEPTree():
+    operatorSeq = []
+    parents = []
+    
+    def getQEPforVisualization(filename):
+        with open(f"{filename}") as file:
+            data = json.load(file)
+            plan = data[0][0][0]["Plan"]
+        iterateOverQEP(plan, -1)
 
-    with open('queryplan.json') as json_file:
-        data = json.load(json_file)
-    dict_plan_inner = data[0][0]
+    def iterateOverQEP(queryplan, parentNo):
+        lastNum = parentNo
+        operatorSeq.append(queryplan['Node Type'])
+        parents.append(parentNo)
+        info.append(queryplan)
+        lastNum = len(parents) - 1
+        if "Plans" in queryplan:
+            for plan in queryplan["Plans"]:
+                iterateOverQEP(plan, lastNum)
+        else:
+            return
+        
+    def create_top_down_tree(node, parent):
+        graph = nx.DiGraph()
 
-    #TO-DO
+        for i, node_type in enumerate(node):
+            graph.add_node(i, label=node_type)
+
+        for i, p in enumerate(parent):
+            if p != -1:
+                graph.add_edge(p, i)
+
+        return graph
+
+    def visualize_tree(graph):
+        pos = nx.spring_layout(graph, seed=42)  # Use spring_layout as an alternative
+        labels = nx.get_node_attributes(graph, 'label')
+        
+        root_node = [node for node, in_degree in graph.in_degree() if in_degree == 0]
+        leaf_nodes = [node for node, out_degree in graph.out_degree() if out_degree == 0]
+        
+        node_colors = ['red' if node == root_node[0] else 'green' if node in leaf_nodes else 'skyblue' for node in graph.nodes]
+
+        nx.draw(graph, pos, with_labels=True, labels=labels, node_size=700, node_color=node_colors, font_size=10, font_color='black', font_weight='bold', arrowsize=20)
+
+        legend_elements = [
+            Line2D([0], [0], marker='o', color='w', markerfacecolor='red', markersize=10, label='Root Node'),
+            Line2D([0], [0], marker='o', color='w', markerfacecolor='green', markersize=10, label='Leaf Nodes'),
+            Line2D([0], [0], marker='o', color='w', markerfacecolor='skyblue', markersize=10, label='Other Nodes'),
+        ]
+
+        plt.legend(handles=legend_elements, loc='upper right')
+        plt.show()
+    
+    getQEPforVisualization(queryplanjson)
+    tree = create_top_down_tree(operatorSeq, parents)
+    visualize_tree(tree)

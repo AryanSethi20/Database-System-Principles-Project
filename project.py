@@ -94,7 +94,7 @@ def createQueryWindow():
     global error_label
 
     window = tk.Tk()
-    window.geometry("720x6800")
+    window.geometry("720x660")
     window.title("PostgreSQL Database")
     window.config(bg = 'white')
 
@@ -103,7 +103,7 @@ def createQueryWindow():
     querypanel_label.pack(pady=5)
     querypanel.pack()
 
-    user_query = tk.Text(querypanel,height=9, relief='solid', wrap='word', bg = '#D3D3D3', font=('Arial',10))
+    user_query = tk.Text(querypanel,height=9, relief='solid', wrap='word', bg = '#D3D3D3', font=('Arial',8))
     user_query.pack()
 
     div = tk.PanedWindow(bg='white')
@@ -118,12 +118,12 @@ def createQueryWindow():
     qep_panel_label.pack(pady=5)
     qep_panel.pack()
 
-    qep_panel_text = tk.Text(qep_panel, state='disabled', height=9, relief='solid', wrap='word', font=('Arial', 10), bg = '#FFFFCC', width = 80)
+    qep_panel_text = tk.Text(qep_panel, state='disabled', height=9, relief='solid', wrap='word', font=('Arial', 8), bg = '#FFFFCC', width = 80)
     qep_panel_text.pack()
 
     div1 = tk.PanedWindow(bg='white')
 
-    qeptreebtn = ctk.CTkButton(div1, text="View QEP Tree", text_color = "white", fg_color = '#24a0ed', hover_color = '#237fb7', font=('Arial', 12), width = 200,command=createQEPTree)
+    qeptreebtn = ctk.CTkButton(div1, text="View QEP Visualization", text_color = "white", fg_color = '#24a0ed', hover_color = '#237fb7', font=('Arial', 12), width = 200,command=createQEPTree)
     qeptreebtn.pack(side=tk.LEFT)
     
     div1.pack(pady=5)
@@ -133,7 +133,7 @@ def createQueryWindow():
     analyze_panel_label.pack(pady=5)
     analyze_panel.pack()
 
-    analyze_panel_text = tk.Text(analyze_panel, state='disabled', height=9, relief='solid', wrap='word', font=('Arial', 10), bg = '#FFFFCC', width = 80)
+    analyze_panel_text = tk.Text(analyze_panel, state='disabled', height=9, relief='solid', wrap='word', font=('Arial', 8), bg = '#FFFFCC', width = 80)
     analyze_panel_text.pack()
 
     div2 = tk.PanedWindow(bg='white')
@@ -156,6 +156,7 @@ def submitQuery():
         qep_panel_text.configure(state='disabled')
 
     else:
+        resetOutput()
         x = executeQuery(query, port, host, database, user, password)
         if not x:
             qep_panel_text.config(fg='red')
@@ -170,11 +171,19 @@ def submitQuery():
             analyze_panel_text.insert(tk.END,analyze_query)
         qep_panel_text.configure(state='disabled')
 
+def resetOutput():
+    analyze_panel_text.configure(state='normal')
+    analyze_panel_text.delete('1.0', 'end-1c')
+    analyze_panel_text.configure(state='disabled')
+
 def deleteQuery():
     qep_panel_text.configure(state='normal')
     qep_panel_text.delete('1.0', 'end-1c')
     qep_panel_text.configure(state='disabled')
     user_query.delete('1.0','end-1c')
+    analyze_panel_text.configure(state='normal')
+    analyze_panel_text.delete('1.0', 'end-1c')
+    analyze_panel_text.configure(state='disabled')
     deleteQEPAnnotation()
 
 if __name__ == "__main__":
