@@ -72,6 +72,7 @@ def login():
     password = password_entry.get()
 
     try:
+        print("trying to make connection")
         conn = psycopg2.connect(
             port=port,
             host=host,
@@ -79,6 +80,7 @@ def login():
             user=user,
             password=password
         )
+        print(conn)
         conn.close()
         login_window.destroy()
         createQueryWindow()
@@ -139,6 +141,10 @@ def createQueryWindow():
     div2 = tk.PanedWindow(bg='white')
 
     clearbtn = ctk.CTkButton(div2, text="Reset", text_color = "white", fg_color = '#c20411', hover_color = '#5c040a',font=('Arial', 12), width = 200, command=deleteQuery)
+    clearbtn.pack(side= tk.LEFT, padx=5)
+
+    #TODO: implement this
+    clearbtn = ctk.CTkButton(div2, text="Logout", text_color = "white", fg_color = '#c20411', hover_color = '#5c040a',font=('Arial', 12), width = 200, command=deleteQuery)
     clearbtn.pack(side= tk.LEFT, padx=5)
     
     div2.pack(pady=5)
