@@ -1,12 +1,15 @@
 from flask import Flask, request, jsonify
-import jwt
 import json
 import psycopg2
 import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
+                                               NavigationToolbar2Tk)
+from matplotlib.figure import Figure
 from networkx.drawing.nx_pydot import graphviz_layout
 import customtkinter as ctk
+import tkinter as tk
 import math
 
 operatorSeq = []
@@ -198,7 +201,7 @@ def QEPAnalysis():
         for node_type, count in results['node_counts'].items():
             analysis += f"{count} {node_type}, "
         analysis += "]"
-        analysis += "\nThe most expensive step of this query was"
+        analysis += "\nThe most expensive step of this query was "
         analysis += f"{results['most_expensive'][0]} (Path: {results['most_expensive'][2]}) with "
         analysis += f"actual total time of {results['most_expensive'][1]}ms." 
 
@@ -403,8 +406,6 @@ def createQEPTree():
         return graph
 
     def visualize_tree(graph):
-        # pos = nx.spring_layout(graph, seed=42)  # Use spring_layout as an alternative
-        # pos = nx.nx_pydot.pydot_layout(graph, prog="dot")  # Use spring_layout as an alternative
         root_node = [node for node, in_degree in graph.in_degree() if in_degree == 0]
         pos = graphviz_layout(graph, prog='dot', root=root_node)
         graph = graph.reverse(copy=True)
@@ -442,13 +443,13 @@ def createQEPTree():
                 node_color = "#DE2D26"
             if label == "Gather":
                 node_color = "#DE2D26"
-            size = len(label) * 0.3 + 50# Estimate the size needed
+            size = len(label) * 0.3 + 50
             nx.draw_networkx_nodes(graph, pos, [node], node_size=size, node_color='none')
             # Draw the label manually to ensure it's placed correctly
             plt.text(x, y, label, fontsize=8, ha='center', va='center', alpha=0.75, 
                     bbox=dict(boxstyle="round,pad=0.3", facecolor=node_color, edgecolor='black'))
         plt.axis('off')
-        plt.title("Query Execution Plan")  # Turn off the axis
+        plt.title("Visualized Query Execution Plan") 
         plt.show()
     
     getQEPforVisualization(queryplanjson)
@@ -465,6 +466,7 @@ def fetch_data_for_ctid(ctid):
     return [("1", "value1"), ("2", "value2")]  # Dummy data
 
 def update_grid(ctid, scrollable_frame):
+    # This is the function that actually updates the new tuples that are read
     # Clear existing grid
     for widget in scrollable_frame.winfo_children():
         widget.destroy()
@@ -473,41 +475,34 @@ def update_grid(ctid, scrollable_frame):
     data = fetch_data_for_ctid(ctid)
     print(f"Data Fetched: {data}")
     # Populate the grid with new data
+    # TODO - rewrite this to work with variable number of columns for each data set
     for row_index, (tuple_value, value) in enumerate(data):
         ctk.CTkLabel(scrollable_frame, text=tuple_value, corner_radius=0, fg_color="transparent", text_color="white", font=("Arial", 12), anchor="w",justify="left", padx=5, pady=5).grid(row=row_index, column=0)
         ctk.CTkLabel(scrollable_frame, text=value, corner_radius=0, fg_color="transparent", text_color="white", font=("Arial", 12), anchor="w",justify="left", padx=5, pady=5).grid(row=row_index, column=1)
         
-def get_num_blocks(choice):
-    return 100000000
+def get_pie_chart(table,reads_dict):
+    print(table)
+    sizes = []
+    labels = []
+    read_information = {i:reads_dict[table][i] for i in reads_dict[table].keys() if reads_dict[table][i]>0}
+    print(read_information)
+    for key in read_information:
+        sizes.append(read_information[key])
+        labels.append(key.replace("_"," ").replace("blks","blocks").title())
+    fig = Figure(figsize=(8, 8), dpi=100)
+    fig.suptitle(f"Profile of Block Reads For Relation {table.title()}")
+    subplot = fig.add_subplot(111)
+    subplot.pie(sizes, labels=labels, autopct="%1.0f%%")    
+    return fig
+    
+def get_block_number(table):
+    # This is where I get the number of blocks in a relation to populate the dropdown on the right side of the block visualization
+    # Needs to return a list for it to be accepted by the tkinter dropdown
+    return ["1","2","3","4","5","6","7","8","9","10"]
 
-def update_block_grid(reads_dict,choice,block_grid):
-    grid_size = get_num_blocks(choice)
-    block_size = 500 // grid_size
-    heap_blks_read = reads_dict[choice]['heap_blks_read']
-    heap_blks_hit = reads_dict[choice]['heap_blks_hit']
-    index_blks_read = reads_dict[choice]['index_blks_read']
-    index_blks_hit = reads_dict[choice]['index_blks_hit'] 
-    toast_blks_read = reads_dict[choice]['toast_blks_read']
-    toast_blks_hit = reads_dict[choice]['toast_blks_hit'] 
-    tidx_blks_read = reads_dict[choice]['tidx_blks_read']
-    tidx_blks_hit = reads_dict[choice]['tidx_blks_hit'] 
-    for ctid, reads in data.items():
-        #TODO: redo rendering of blocks
-        index = list(data.keys()).index(ctid)
-        x0 = (index % grid_size) * block_size
-        y0 = (index // grid_size) * block_size
-        x1 = x0 + block_size
-        y1 = y0 + block_size
-        color = get_hue(reads)
-        block_grid.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
-        text_position = (x0 + block_size / 2, y0 + block_size / 2)  # Center of the block
-        if(reads < 10):
-            text_color = "black"
-        else:
-            text_color = "white"
-        block_grid.create_text(text_position, text=f"CTID {ctid}\nReads: {reads}", fill=text_color) 
 
 def create_block_visualization():
+    # Parsing readinfo.json to get the reads and hits for each type of block
     with open("readinfo.json", 'r') as file:
         data = json.load(file)
     reads_dict = {}
@@ -527,51 +522,51 @@ def create_block_visualization():
     table_list = list(reads_dict.keys())
     print(reads_dict)
     print(table_list)
-    max_blocks = 100
-    num_blocks = len(data)
-    if num_blocks > max_blocks:
-        # Implement your aggregation logic here
-        # For example, summing reads of every 'n' blocks
-        n = math.ceil(num_blocks / max_blocks)
-        aggregated_data = {}
-        for i in range(0, num_blocks, n):
-            block_ids = list(data.keys())[i:i+n]
-            total_reads = sum(data[ctid] for ctid in block_ids if ctid in data)
-            aggregated_data[f"{block_ids[0]}-{block_ids[-1]}"] = total_reads
-        data = aggregated_data
-    print(num_blocks)
-    grid_size = int(math.sqrt(num_blocks)) + 1
-    print(grid_size)
-
-    root = ctk.CTk()
+    root = tk.Tk()
     table_var = ctk.StringVar()
     root.title("Block Visualization")
     canvas_frame = ctk.CTkFrame(root, bg_color="white")
-    canvas_frame.pack(side=ctk.LEFT)
+    canvas_frame.pack(side=ctk.LEFT, expand=True, fill=ctk.BOTH)
+    fig = get_pie_chart("lineitem", reads_dict)
+    ctid_list = []
+
     def on_table_select(choice):
-        update_block_grid(reads_dict,choice,block_grid)
+        #When you select the dropdown on the left, this is the logic that updates the plot that is drawn and the dropdown on the right for each block id
+        nonlocal block_grid
+        nonlocal ctid_list
+        nonlocal ctid_dropdown
+        fig = get_pie_chart(choice, reads_dict)
+        block_grid.figure = fig  
+        block_grid.draw()
+        ctid_list = get_block_number(choice)
+        print(ctid_list)
+        ctid_dropdown.configure(values = ctid_list)
+
     table_dropdown = ctk.CTkComboBox(canvas_frame, variable=table_var, values=table_list, bg_color="white", command=on_table_select)
-    block_grid = ctk.CTkCanvas(canvas_frame, width=500, height=500, bg="white")
+    block_grid = FigureCanvasTkAgg(fig, master=canvas_frame)
+    block_grid.draw()
     table_dropdown.pack()
-    block_grid.pack()
+    block_grid.get_tk_widget().pack()
 
     info_frame = ctk.CTkFrame(root, bg_color="white",fg_color="white")
     info_frame.pack(side=ctk.RIGHT, fill=ctk.BOTH, expand=True)    
     ctid_var = ctk.StringVar()
-    ctid_list = table_list
+    
     def on_ctid_select(choice):
+        #This is just a wrapper function because tkinter combo box works better if command argument function has only one argument
         update_grid(choice, scrollable_frame)
+
     ctid_dropdown = ctk.CTkComboBox(info_frame, variable=ctid_var, values=ctid_list, command=on_ctid_select, bg_color="white")
     ctid_dropdown.pack()
 
     # Table (Treeview) for displaying tuples
+    # TODO - modify this to have a better output format
     scrollable_frame = ctk.CTkScrollableFrame(info_frame,bg_color="white")
     scrollable_frame.pack(expand=True, fill='both')
     
-    
-
     # Run the Tkinter event loop
     root.config(bg='white')
     root.mainloop()
 
+# TODO - comment this out when submitting final code
 create_block_visualization()

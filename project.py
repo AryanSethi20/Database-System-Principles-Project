@@ -21,19 +21,19 @@ def createLoginWindow():
     
     frame = ctk.CTkFrame(login_window, fg_color='white')
 
-    title_label = ctk.CTkLabel(frame, text="PostgreSQL", font=('Arial', 30, 'bold'), text_color='black')
+    title_label = ctk.CTkLabel(frame, text="PostgreSQL Login", font=('Arial', 30, 'bold'), text_color='black')
 
     port_label = ctk.CTkLabel(frame, text="Port", font=('Arial', 14), text_color='black')
-    port_entry = ctk.CTkEntry(frame, fg_color = '#D3D3D3', font=('Arial', 14), text_color='black')
+    port_entry = ctk.CTkEntry(frame, fg_color = '#D3D3D3', font=('Arial', 14), text_color='black',placeholder_text="5432")
     
     host_label = ctk.CTkLabel(frame, text="Host", font=('Arial', 14), text_color='black')
-    host_entry = ctk.CTkEntry(frame, fg_color = '#D3D3D3', font=('Arial', 14), text_color='black')
+    host_entry = ctk.CTkEntry(frame, fg_color = '#D3D3D3', font=('Arial', 14), text_color='black',placeholder_text="localhost")
 
     database_label = ctk.CTkLabel(frame, text="Database", font=('Arial', 14), text_color='black')
-    database_entry = ctk.CTkEntry(frame, fg_color = '#D3D3D3', font=('Arial', 14), text_color='black')
+    database_entry = ctk.CTkEntry(frame, fg_color = '#D3D3D3', font=('Arial', 14), text_color='black', placeholder_text="TPC-H")
 
     user_label = ctk.CTkLabel(frame, text="Username", font=('Arial', 14), text_color='black')
-    user_entry = ctk.CTkEntry(frame, fg_color = '#D3D3D3', font=('Arial', 14), text_color='black')
+    user_entry = ctk.CTkEntry(frame, fg_color = '#D3D3D3', font=('Arial', 14), text_color='black', placeholder_text="postgres")
 
     password_label = ctk.CTkLabel(frame, text="Password", font=('Arial', 14), text_color='black')
     password_entry = ctk.CTkEntry(frame, show="*",fg_color = '#D3D3D3', font=('Arial', 14), text_color='black')
@@ -98,11 +98,12 @@ def createQueryWindow():
     global error_label
 
     window = tk.Tk()
-    window.geometry("720x660")
+    # window.geometry("720x660")
+    window.state('zoomed')
     window.title("PostgreSQL Database")
     window.config(bg = 'white')
 
-    querypanel = tk.PanedWindow(bg='white')
+    querypanel = tk.PanedWindow(bg='white', height=9)
     querypanel_label = ctk.CTkLabel(querypanel, text="Enter SQL Query", font=('Arial', 16, 'bold'), text_color='black')
     querypanel_label.pack(pady=5)
     querypanel.pack()
@@ -119,12 +120,12 @@ def createQueryWindow():
     
     div.pack(pady=5)
 
-    qep_panel = tk.PanedWindow(bg= 'white')
+    qep_panel = tk.PanedWindow(bg= 'white', height=9)
     qep_panel_label = ctk.CTkLabel(qep_panel, text="Query Execution Plan In Natural Language", font=('Arial', 16, 'bold'), text_color='black')
     qep_panel_label.pack(pady=5)
     qep_panel.pack()
 
-    qep_panel_text = tk.Text(qep_panel, state='disabled', height=9, relief='solid', wrap='word', font=('Arial', 8), bg = '#FFFFCC', width = 80)
+    qep_panel_text = tk.Text(qep_panel, state='disabled', height=9, relief='solid', wrap='word', font=('Arial', 14), bg = '#FFFFCC', width = 80)
     qep_panel_text.pack()
 
     div1 = tk.PanedWindow(bg='white')
@@ -142,7 +143,7 @@ def createQueryWindow():
     analyze_panel_label.pack(pady=5)
     analyze_panel.pack()
 
-    analyze_panel_text = tk.Text(analyze_panel, state='disabled', height=9, relief='solid', wrap='word', font=('Arial', 8), bg = '#FFFFCC', width = 80)
+    analyze_panel_text = tk.Text(analyze_panel, state='disabled', height=9, relief='solid', wrap='word', font=('Arial', 14), bg = '#FFFFCC', width = 80)
     analyze_panel_text.pack()
 
     div2 = tk.PanedWindow(bg='white')
@@ -150,12 +151,7 @@ def createQueryWindow():
     clearbtn = ctk.CTkButton(div2, text="Reset", text_color = "white", fg_color = '#c20411', hover_color = '#5c040a',font=('Arial', 12), width = 200, command=deleteQuery)
     clearbtn.pack(side= tk.LEFT, padx=5)
 
-    #TODO: implement this
-    clearbtn = ctk.CTkButton(div2, text="Logout", text_color = "white", fg_color = '#c20411', hover_color = '#5c040a',font=('Arial', 12), width = 200, command=deleteQuery)
-    clearbtn.pack(side= tk.LEFT, padx=5)
-    
     div2.pack(pady=5)
-
     window.mainloop()
 
 def submitQuery():
