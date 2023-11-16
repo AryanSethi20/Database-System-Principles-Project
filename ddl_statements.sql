@@ -3,7 +3,7 @@ CREATE TABLE public.region
 (
     r_regionkey integer not null,
     r_name character(25) collate pg_catalog."default" not null,
-    r_comment character varying(152) collage pg_catalog."default",
+    r_comment character varying(152) collate pg_catalog."default",
     constraint region_pkey primary key (r_regionkey)
 )
 with(
