@@ -1,6 +1,8 @@
 import tkinter as tk
 import customtkinter as ctk
 from explore import *
+from chlorophyll import CodeView
+import pygments.lexers
 import psycopg2
 
 def createLoginWindow():
@@ -101,12 +103,14 @@ def createQueryWindow():
     window.config(bg = 'white')
 
     querypanel = tk.PanedWindow(bg='white')
-    querypanel_label = ctk.CTkLabel(querypanel, text="SQL Query", font=('Arial', 16, 'bold'), text_color='black')
+    querypanel_label = ctk.CTkLabel(querypanel, text="Enter SQL Query", font=('Arial', 16, 'bold'), text_color='black')
     querypanel_label.pack(pady=5)
     querypanel.pack()
 
-    user_query = tk.Text(querypanel,height=9, relief='solid', wrap='word', bg = '#D3D3D3', font=('Arial',8))
+    user_query = CodeView(querypanel, height=9, lexer=pygments.lexers.SqlLexer, color_scheme="ayu-light")
     user_query.pack()
+    # user_query = tk.Text(querypanel,height=9, relief='solid', wrap='word', bg = '#D3D3D3', font=('Arial',8))
+    # user_query.pack()
 
     div = tk.PanedWindow(bg='white')
 
@@ -127,6 +131,9 @@ def createQueryWindow():
 
     qeptreebtn = ctk.CTkButton(div1, text="View QEP Visualization", text_color = "white", fg_color = '#24a0ed', hover_color = '#237fb7', font=('Arial', 12), width = 200,command=createQEPTree)
     qeptreebtn.pack(side=tk.LEFT)
+
+    blockvisbtn = ctk.CTkButton(div1, text="View Block Visualization", text_color="white", fg_color="#24a0ed", hover_color='#237fb7', font=('Arial', 12), width = 200, command=create_block_visualization)
+    blockvisbtn.pack(side=tk.LEFT, padx=5)
     
     div1.pack(pady=5)
 
@@ -174,6 +181,7 @@ def submitQuery():
             qep_panel_text.insert(tk.END,annotated_query[0])
             analyze_query = QEPAnalysis()
             analyze_panel_text.configure(state='normal')
+            analyze_panel_text.configure(fg='black')
             analyze_panel_text.insert(tk.END,analyze_query)
         qep_panel_text.configure(state='disabled')
 

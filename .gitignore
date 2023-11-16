@@ -3,4 +3,5 @@ project-2/
 csv-files/
 test.py
 .env
+.venv/
 __pycache__

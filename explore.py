@@ -6,6 +6,8 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from networkx.drawing.nx_pydot import graphviz_layout
+import customtkinter as ctk
+import math
 
 operatorSeq = []
 parents = []
@@ -183,31 +185,31 @@ def getQEPAnnotation():
     return steps
 
 def QEPAnalysis():
-    analysis = ''
-    analysis += f"Execution Time = {executionTime} ms, "
-    analysis += f"Planning Time = {planningTime} ms, "
-    analysis += f"Total Cost = {totalCost}"
+    analysis = 'Time Taken For Query Execution:\n'
+    analysis += f"Execution Time = {executionTime} ms\n"
+    analysis += f"Planning Time = {planningTime} ms\n"
+    analysis += f"Total Cost = {totalCost}\n"
     results = analyze_execution_plan(queryplanjson)
 
     if results['most_expensive'] is not None and results['least_expensive'] is not None:
-        # Display the results
-        analysis += "\nMost expensive step is "
+        # Additional query analysis
+        analysis += f"\nThis query has a total of {results['total_plans']} steps: ["
+        for node_type, count in results['node_counts'].items():
+            analysis += f"{count} {node_type}, "
+        analysis += "]"
+        analysis += "\nThe most expensive step of this query was"
         analysis += f"{results['most_expensive'][0]} (Path: {results['most_expensive'][2]}) with "
         analysis += f"actual total time of {results['most_expensive'][1]}ms." 
 
-        analysis += "\nLeast expensive step is "
+        analysis += "\nThe least expensive step of this query was "
         analysis += f"{results['least_expensive'][0]} (Path: {results['least_expensive'][2]}) with "
         analysis += f"actual total time of {results['least_expensive'][1]}ms."
 
         # Print the total difference
-        analysis += f"\nTotal difference between estimated and actual time is {results['total_difference']}ms"
+        analysis += f"\nTotal difference between estimated and actual time taken was {results['total_difference']}ms"
 
-        # Additional query analysis
-        analysis += f"\nTotal number of plans: {results['total_plans']} ["
-        for node_type, count in results['node_counts'].items():
-            analysis += f"{count} {node_type}, "
+        # Display the results
         analysis = analysis.rstrip(', ')
-        analysis += "]"
 
         # Average actual total time for each node type
         analysis += "\nAverage actual total time: "
@@ -330,39 +332,47 @@ def createQEPTree():
 
     def iterateOverQEP(queryplan, parentNo):
         lastNum = parentNo
-
         nodeValue = f"{queryplan['Node Type']}"
         #Handling addition of information to node for different sorts
         if(queryplan['Node Type'] == "Sort"):
             nodeValue = f"{queryplan['Sort Method'].title()} Sort On {queryplan['Sort Space Type'].title()}"
             #FIXME: takes too much space
-            #nodeValue += "\nSort Key - " + ", ".join([s.replace(":", "-") for s in queryplan['Sort Key']])
-            # nodeValue += f"\nSort Key - {queryplan['Sort Key']}"
+            nodeValue += "\nSort Key - " + ", ".join([s.replace(":", "-") for s in queryplan['Sort Key']])
 
         #Handling addition of information to node for different joins
         elif(queryplan['Node Type']=="Hash Join"):
             nodeValue = f"{queryplan['Join Type'].title()} Hash Join"
             #FIXME: takes too much space
-            #nodeValue += f"\nHash Condition - {queryplan['Hash Cond']}"
+            nodeValue += f"\nHash Condition - {queryplan['Hash Cond']}"
 
         elif(queryplan['Node Type']=="Nested Loop"):
             nodeValue = f"{queryplan['Join Type'].title()} Nested Loop Join"
 
         #Handling addition of information to node for different scans
         elif(queryplan['Node Type']=="Seq Scan"):
-            nodeValue = f"Seq Scan on {queryplan['Relation Name'].title()}"
-            # try:
-            #     #FIXME: not working yet
-            #     #nodeValue += "\nFilter - " + ", ".join([s.replace(":", "-") for s in queryplan['Filter']])
-            # except:
-            #     pass
+            nodeValue = f"Sequential Scan on {queryplan['Relation Name'].title()}"
+            try:
+                replaced_filter = queryplan['Filter'].replace("::","-")
+                nodeValue += f"\nFilter - {replaced_filter}"
+            except:
+                pass
 
         elif(queryplan['Node Type']=="Index Scan"):
-            nodeValue = f"Index Scan on {queryplan['Relation Name'].title()}"
-            nodeValue += f"\nIndex Name - {queryplan['Index Name'].title()}"
-            nodeValue += f"\nScan Direction - {queryplan['Scan Direction'].title()}"
+            nodeValue = f"Index Scan on {queryplan['Relation Name'].title()} with {queryplan['Index Name']}"
+            #nodeValue += f"\nIndex Name - {queryplan['Index Name'].title()}"
+            # nodeValue += f"\nScan Direction - "
             #FIXME - takes too much space
-            #nodeValue += f"\nIndex Condition - {queryplan['Index Cond'].title()}"
+            nodeValue += f"\nIndex Condition - {queryplan['Index Cond'].title()}"
+
+        #Handling addition of information to node for Aggregate
+        elif(queryplan['Node Type']=="Aggregate"):
+            nodeValue += f"\nStrategy - {queryplan['Strategy'].title()}"
+        
+        elif(queryplan['Node Type'] == "Hash"):
+            nodeValue += f"\nHash Buckets - {queryplan['Hash Buckets']}"
+        
+        nodeValue.replace("::","-")
+        print(nodeValue)
         operatorSeq.append(nodeValue)
         parents.append(parentNo)
         info.append(queryplan)
@@ -396,24 +406,24 @@ def createQEPTree():
         max_node_size = 0
         for node, (x, y) in pos.items():
             label = graph.nodes[node]['label']
-            size = len(label) * 0.3 
+            size = len(label) * 3 
             if size > max_node_size:
                 max_node_size = size 
         print(f"max node size: {max_node_size}")
-        nx.draw_networkx_edges(graph, pos, node_size=max_node_size+100)
+        nx.draw_networkx_edges(graph, pos, node_size=max_node_size)
         for node, (x, y) in pos.items():
             label = graph.nodes[node]['label']
             #TODO: write a function for this code if you have time later
             node_color = "grey"
             if 'Nested Loop Join' in label:
                 node_color = "#FFDD32"
-            if "Inner Hash Join" in label:
+            if "Hash Join" in label:
                 node_color = "#FFDD32"
-            if 'Seq Scan' in label:
+            if 'Sequential Scan' in label:
                 node_color = "#78C679"
             if 'Index Scan' in label:
                 node_color = "#41AB5D"
-            if label == "Hash":
+            if "Hash Buckets" in label:
                 node_color = "#6BAED6"
             if label == "Memoize":
                 node_color = "#3182BD"
@@ -423,8 +433,9 @@ def createQEPTree():
                 node_color = "#FC9272"
             if 'Gather Merge' in label:
                 node_color = "#DE2D26"
-            
-            size = len(label) * 0.3 + 10# Estimate the size needed
+            if label == "Gather":
+                node_color = "#DE2D26"
+            size = len(label) * 0.3 + 50# Estimate the size needed
             nx.draw_networkx_nodes(graph, pos, [node], node_size=size, node_color='none')
             # Draw the label manually to ensure it's placed correctly
             plt.text(x, y, label, fontsize=8, ha='center', va='center', alpha=0.75, 
@@ -436,3 +447,88 @@ def createQEPTree():
     getQEPforVisualization(queryplanjson)
     tree = create_top_down_tree(operatorSeq, parents)
     visualize_tree(tree)
+
+def get_hue(reads):
+    intensity = min(255, reads * 5)
+    return f"#ff{format(255-intensity, '02x')}{format(255-intensity, '02x')}"
+
+def fetch_data_for_ctid(ctid):
+    # Replace this with your actual backend function call
+    # For example: return backend_function(ctid)
+    return [("1", "value1"), ("2", "value2")]  # Dummy data
+
+def update_grid(ctid, scrollable_frame):
+    # Clear existing grid
+    for widget in scrollable_frame.winfo_children():
+        widget.destroy()
+    print(f"Fetching data for ctid {ctid}")
+    # Fetch new data
+    data = fetch_data_for_ctid(ctid)
+    print(f"Data Fetched: {data}")
+    # Populate the grid with new data
+    for row_index, (tuple_value, value) in enumerate(data):
+        ctk.CTkLabel(scrollable_frame, text=tuple_value, corner_radius=0, fg_color="transparent", text_color="white", font=("Arial", 12), anchor="w",justify="left", padx=5, pady=5).grid(row=row_index, column=0)
+        ctk.CTkLabel(scrollable_frame, text=value, corner_radius=0, fg_color="transparent", text_color="white", font=("Arial", 12), anchor="w",justify="left", padx=5, pady=5).grid(row=row_index, column=1)
+        
+
+def create_block_visualization():
+    with open("ctidinfo.json", 'r') as file:
+        data = json.load(file)
+    
+    max_blocks = 100
+    num_blocks = len(data)
+    if num_blocks > max_blocks:
+        # Implement your aggregation logic here
+        # For example, summing reads of every 'n' blocks
+        n = math.ceil(num_blocks / max_blocks)
+        aggregated_data = {}
+        for i in range(0, num_blocks, n):
+            block_ids = list(data.keys())[i:i+n]
+            total_reads = sum(data[ctid] for ctid in block_ids if ctid in data)
+            aggregated_data[f"{block_ids[0]}-{block_ids[-1]}"] = total_reads
+        data = aggregated_data
+    print(num_blocks)
+    grid_size = int(math.sqrt(num_blocks)) + 1
+    print(grid_size)
+
+    root = ctk.CTk()
+    root.title("Block Visualization")
+    canvas_frame = ctk.CTkFrame(root, bg_color="white")
+    info_frame = ctk.CTkFrame(root, bg_color="white")
+    canvas_frame.pack(side=ctk.LEFT)
+    block_grid = ctk.CTkCanvas(canvas_frame, width=500, height=500, bg="white")
+    block_grid.pack()
+
+    info_frame.pack(side=ctk.RIGHT, fill=ctk.BOTH, expand=True)    
+    ctid_var = ctk.StringVar()
+    ctid_list = list(data.keys())
+    def on_ctid_select(choice):
+        update_grid(choice, scrollable_frame)
+    ctid_dropdown = ctk.CTkComboBox(info_frame, variable=ctid_var, values=ctid_list, command=on_ctid_select)
+    ctid_dropdown.pack()
+
+    # Table (Treeview) for displaying tuples
+    scrollable_frame = ctk.CTkScrollableFrame(info_frame)
+    scrollable_frame.pack(expand=True, fill='both')
+    
+    block_size = 500 // grid_size
+    for ctid, reads in data.items():
+        index = list(data.keys()).index(ctid)
+        x0 = (index % grid_size) * block_size
+        y0 = (index // grid_size) * block_size
+        x1 = x0 + block_size
+        y1 = y0 + block_size
+        color = get_hue(reads)
+        block_grid.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
+        text_position = (x0 + block_size / 2, y0 + block_size / 2)  # Center of the block
+        if(reads < 10):
+            text_color = "black"
+        else:
+            text_color = "white"
+        block_grid.create_text(text_position, text=f"CTID {ctid}\nReads: {reads}", fill=text_color) 
+
+    # Run the Tkinter event loop
+    root.config(bg='white')
+    root.mainloop()
+
+create_block_visualization()
