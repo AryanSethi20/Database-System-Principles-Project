@@ -125,33 +125,7 @@ def createQueryWindow():
     qeptree_btn.grid(row=1, column=1, pady=5)
     block_btn.grid(row=2, column=1, pady=5)
     qep_panel.pack(pady=5)
-
-<<<<<<< Updated upstream
-    qep_panel_text = tk.Text(qep_panel, state='disabled', height=9, relief='solid', wrap='word', font=('Arial', 8), bg = '#FFFFCC', width = 80)
-    qep_panel_text.pack()
-
-    div1 = tk.PanedWindow(bg='white')
-
-    qeptreebtn = ctk.CTkButton(div1, text="View QEP Visualization", text_color = "white", fg_color = '#24a0ed', hover_color = '#237fb7', font=('Arial', 12), width = 200,command=createQEPTree)
-    qeptreebtn.pack(side=tk.LEFT)
     
-    div1.pack(pady=5)
-
-    analyze_panel = tk.PanedWindow(bg= 'white')
-    analyze_panel_label = ctk.CTkLabel(analyze_panel, text="Query Analysis", font=('Arial', 16, 'bold'), text_color='black')
-    analyze_panel_label.pack(pady=5)
-    analyze_panel.pack()
-
-    analyze_panel_text = tk.Text(analyze_panel, state='disabled', height=9, relief='solid', wrap='word', font=('Arial', 8), bg = '#FFFFCC', width = 80)
-    analyze_panel_text.pack()
-
-    div2 = tk.PanedWindow(bg='white')
-
-    clearbtn = ctk.CTkButton(div2, text="Reset", text_color = "white", fg_color = '#c20411', hover_color = '#5c040a',font=('Arial', 12), width = 200, command=deleteQuery)
-    clearbtn.pack(side= tk.LEFT, padx=5)
-    
-    div2.pack(pady=5)
-=======
     # Analysis Panel
     analyze_panel = ctk.CTkFrame(window, fg_color='white')
     analyze_panel_label = ctk.CTkLabel(analyze_panel, text="Query Analysis", font=('Arial', 16, 'bold'),
@@ -168,7 +142,6 @@ def createQueryWindow():
     clear_btn.grid(row=1, column=1, pady=5)
     logout_btn.grid(row=2, column=1, pady=5)
     analyze_panel.pack(pady=5)
->>>>>>> Stashed changes
 
     window.mainloop()
 
