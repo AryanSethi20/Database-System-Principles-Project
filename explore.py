@@ -3,6 +3,7 @@ import psycopg2
 import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from networkx.drawing.nx_pydot import graphviz_layout
 
 operatorSeq = []
 parents = []
@@ -346,23 +347,52 @@ def createQEPTree():
         return graph
 
     def visualize_tree(graph):
-        pos = nx.spring_layout(graph, seed=42)  # Use spring_layout as an alternative
-        labels = nx.get_node_attributes(graph, 'label')
-        
+        # pos = nx.spring_layout(graph, seed=42)  # Use spring_layout as an alternative
+        # pos = nx.nx_pydot.pydot_layout(graph, prog="dot")  # Use spring_layout as an alternative
         root_node = [node for node, in_degree in graph.in_degree() if in_degree == 0]
-        leaf_nodes = [node for node, out_degree in graph.out_degree() if out_degree == 0]
-        
-        node_colors = ['red' if node == root_node[0] else 'green' if node in leaf_nodes else 'skyblue' for node in graph.nodes]
-
-        nx.draw(graph, pos, with_labels=True, labels=labels, node_size=700, node_color=node_colors, font_size=10, font_color='black', font_weight='bold', arrowsize=20)
-
-        legend_elements = [
-            Line2D([0], [0], marker='o', color='w', markerfacecolor='red', markersize=10, label='Root Node'),
-            Line2D([0], [0], marker='o', color='w', markerfacecolor='green', markersize=10, label='Leaf Nodes'),
-            Line2D([0], [0], marker='o', color='w', markerfacecolor='skyblue', markersize=10, label='Other Nodes'),
-        ]
-
-        plt.legend(handles=legend_elements, loc='upper right')
+        pos = graphviz_layout(graph, prog='dot', root=root_node)
+        graph = graph.reverse(copy=True)
+        #FIXME: this works but it's a bit bugged still
+        # For each node, draw a larger box to fit the text
+        max_node_size = 0
+        for node, (x, y) in pos.items():
+            label = graph.nodes[node]['label']
+            size = len(label) * 3 
+            if size > max_node_size:
+                max_node_size = size 
+        print(f"max node size: {max_node_size}")
+        nx.draw_networkx_edges(graph, pos, node_size=max_node_size)
+        for node, (x, y) in pos.items():
+            label = graph.nodes[node]['label']
+            #TODO: write a function for this code if you have time later
+            node_color = "grey"
+            if 'Nested Loop Join' in label:
+                node_color = "#FFDD32"
+            if "Hash Join" in label:
+                node_color = "#FFDD32"
+            if 'Sequential Scan' in label:
+                node_color = "#78C679"
+            if 'Index Scan' in label:
+                node_color = "#41AB5D"
+            if "Hash Buckets" in label:
+                node_color = "#6BAED6"
+            if label == "Memoize":
+                node_color = "#3182BD"
+            if 'Sort' in label:
+                node_color = "#9E9AC8"
+            if 'Aggregate' in label:
+                node_color = "#FC9272"
+            if 'Gather Merge' in label:
+                node_color = "#DE2D26"
+            if label == "Gather":
+                node_color = "#DE2D26"
+            size = len(label) * 0.3 + 50# Estimate the size needed
+            nx.draw_networkx_nodes(graph, pos, [node], node_size=size, node_color='none')
+            # Draw the label manually to ensure it's placed correctly
+            plt.text(x, y, label, fontsize=8, ha='center', va='center', alpha=0.75, 
+                    bbox=dict(boxstyle="round,pad=0.3", facecolor=node_color, edgecolor='black'))
+        plt.axis('off')
+        plt.title("Query Execution Plan")  # Turn off the axis
         plt.show()
     
     getQEPforVisualization(queryplanjson)
