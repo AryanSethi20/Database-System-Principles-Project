@@ -532,7 +532,5 @@ def create_block_visualization():
     root.config(bg='white')
     root.mainloop()
 
+createQEPTree()
 create_block_visualization()
-
-
-
