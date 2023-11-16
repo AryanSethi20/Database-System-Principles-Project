@@ -299,7 +299,12 @@ def executeQuery(text, port_value, host_value, database_value, user_value, passw
             password=password_value
         )
         cursor = con.cursor()
+<<<<<<< Updated upstream
         cursor.execute("EXPLAIN (ANALYZE, VERBOSE, COSTS, FORMAT JSON) " + text)
+=======
+        print(cursor)
+        cursor.execute("EXPLAIN (ANALYZE, BUFFERS, VERBOSE, COSTS, FORMAT JSON) " + text)
+>>>>>>> Stashed changes
         queryOutput = cursor.fetchall()
         queryExecuted = True
         cursor.close()

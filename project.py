@@ -2,6 +2,7 @@ import tkinter as tk
 import customtkinter as ctk
 from explore import *
 import psycopg2
+import os
 
 def createLoginWindow():
     global login_window
@@ -94,30 +95,38 @@ def createQueryWindow():
     global error_label
 
     window = tk.Tk()
-    window.geometry("720x660")
+    window.geometry("960x720")
     window.title("PostgreSQL Database")
-    window.config(bg = 'white')
+    window.config(bg='white')
 
-    querypanel = tk.PanedWindow(bg='white')
-    querypanel_label = ctk.CTkLabel(querypanel, text="SQL Query", font=('Arial', 16, 'bold'), text_color='black')
-    querypanel_label.pack(pady=5)
-    querypanel.pack()
-
-    user_query = tk.Text(querypanel,height=9, relief='solid', wrap='word', bg = '#D3D3D3', font=('Arial',8))
-    user_query.pack()
-
-    div = tk.PanedWindow(bg='white')
-
-    submitButton = ctk.CTkButton(div, text='Submit', text_color = 'white', fg_color = '#04c256', hover_color = '#024d23', font=('Arial', 12), width = 200, command=submitQuery)
-    submitButton.pack(side=tk.LEFT, padx=5)
+    # Query Panel
+    query_panel = ctk.CTkFrame(window, fg_color='white')
+    query_panel_label = ctk.CTkLabel(query_panel, text="Input SQL Query Here", font=('Arial', 16, 'bold'), text_color='black')
+    user_query = tk.Text(query_panel, height=12, relief='solid', wrap='word', bg='#D3D3D3', font=('Arial', 8))
+    submit_button = ctk.CTkButton(query_panel, text='Submit', text_color='white', fg_color='#04c256', hover_color='#024d23',
+                                font=('Arial', 12), width=120, command=submitQuery)
+    query_panel_label.grid(row=0, column=0, sticky="nsew", pady=5)
+    user_query.grid(column=0, rowspan=1, sticky="nsew", padx=5, pady=5)
+    submit_button.grid(row=1, column=1, pady=5)
+    query_panel.pack(pady=5)
     
-    div.pack(pady=5)
-
-    qep_panel = tk.PanedWindow(bg= 'white')
+    # Query Execution Panel
+    qep_panel = ctk.CTkFrame(window, fg_color='white')
     qep_panel_label = ctk.CTkLabel(qep_panel, text="Query Execution Plan In Natural Language", font=('Arial', 16, 'bold'), text_color='black')
-    qep_panel_label.pack(pady=5)
-    qep_panel.pack()
+    qep_panel_text = tk.Text(qep_panel, state='disabled', height=12, relief='solid', wrap='word', font=('Arial', 8),
+                            bg='#FFFFCC', width=80)    
+    qeptree_btn = ctk.CTkButton(qep_panel, text="QEP Visualization", text_color="white", fg_color='#24a0ed',
+                                hover_color='#237fb7', font=('Arial', 12), width=120, command=createQEPTree)
+    #TO-DO: Add block visualization functionality
+    block_btn = ctk.CTkButton(qep_panel, text="Block Visualization", text_color="white", fg_color='#24a0ed',
+                            hover_color='#237fb7', font=('Arial', 12), width=120, command=createQEPTree)
+    qep_panel_label.grid(row=0, column=0, sticky="nsew", pady=5)
+    qep_panel_text.grid(column=0, rowspan=2, sticky="nsew", padx=5, pady=5)
+    qeptree_btn.grid(row=1, column=1, pady=5)
+    block_btn.grid(row=2, column=1, pady=5)
+    qep_panel.pack(pady=5)
 
+<<<<<<< Updated upstream
     qep_panel_text = tk.Text(qep_panel, state='disabled', height=9, relief='solid', wrap='word', font=('Arial', 8), bg = '#FFFFCC', width = 80)
     qep_panel_text.pack()
 
@@ -142,6 +151,24 @@ def createQueryWindow():
     clearbtn.pack(side= tk.LEFT, padx=5)
     
     div2.pack(pady=5)
+=======
+    # Analysis Panel
+    analyze_panel = ctk.CTkFrame(window, fg_color='white')
+    analyze_panel_label = ctk.CTkLabel(analyze_panel, text="Query Analysis", font=('Arial', 16, 'bold'),
+                                    text_color='black')
+    analyze_panel_text = tk.Text(analyze_panel, state='disabled', height=12, relief='solid', wrap='word', font=('Arial', 8),
+                                bg='#FFFFCC', width=80)
+    clear_btn = ctk.CTkButton(analyze_panel, text="Reset", text_color="white", fg_color='#c20411', hover_color='#5c040a',
+                            font=('Arial', 12), width=120, command=deleteQuery)
+    #TO-DO: Add logout functionality
+    logout_btn = ctk.CTkButton(analyze_panel, text="Logout", text_color="white", fg_color='#c20411', hover_color='#5c040a',
+                                font=('Arial', 12), width=120, command=deleteQuery)    
+    analyze_panel_label.grid(row=0, column=0, sticky="nsew", pady=5)
+    analyze_panel_text.grid(column=0, rowspan=2, sticky="nsew", padx=5, pady=5)
+    clear_btn.grid(row=1, column=1, pady=5)
+    logout_btn.grid(row=2, column=1, pady=5)
+    analyze_panel.pack(pady=5)
+>>>>>>> Stashed changes
 
     window.mainloop()
 
@@ -187,4 +214,5 @@ def deleteQuery():
     deleteQEPAnnotation()
 
 if __name__ == "__main__":
+    os.environ["PATH"] += os.pathsep + r"C:\Program Files\Graphviz\bin"
     createLoginWindow()
