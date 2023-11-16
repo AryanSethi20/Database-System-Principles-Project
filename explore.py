@@ -16,6 +16,7 @@ time = []
 annotations = []
 analysisList = []
 queryplanjson = "queryplan.json"
+readinfojson = "readinfo.json"
 
 def QEPAnnotation():
     deleteQEPAnnotation()
@@ -306,13 +307,19 @@ def executeQuery(text, port_value, host_value, database_value, user_value, passw
         )
         cursor = con.cursor()
         print(cursor)
-        cursor.execute("EXPLAIN (ANALYZE, VERBOSE, COSTS, FORMAT JSON) " + text)
+        cursor.execute("SELECT pg_stat_reset();")
+        cursor.execute("EXPLAIN (BUFFERS ON, ANALYZE ON, COSTS ON, VERBOSE ON, SUMMARY ON, TIMING ON, FORMAT JSON) " + text)
         queryOutput = cursor.fetchall()
         print(queryOutput)
         queryExecuted = True
+        cursor.execute("SELECT * FROM pg_statio_user_tables;")
+        readOutput = cursor.fetchall()
+        print(readOutput)
         cursor.close()
         with open(queryplanjson, 'w') as f:
             json.dump(queryOutput, f, ensure_ascii=True, indent=2)
+        with open(readinfojson, 'w') as f:
+            json.dump(readOutput, f, ensure_ascii=True, indent=2)
         print("Written to queryplan.json") 
     
     except(Exception, psycopg2.DatabaseError) as error:
@@ -470,11 +477,56 @@ def update_grid(ctid, scrollable_frame):
         ctk.CTkLabel(scrollable_frame, text=tuple_value, corner_radius=0, fg_color="transparent", text_color="white", font=("Arial", 12), anchor="w",justify="left", padx=5, pady=5).grid(row=row_index, column=0)
         ctk.CTkLabel(scrollable_frame, text=value, corner_radius=0, fg_color="transparent", text_color="white", font=("Arial", 12), anchor="w",justify="left", padx=5, pady=5).grid(row=row_index, column=1)
         
+def get_num_blocks(choice):
+    return 100000000
+
+def update_block_grid(reads_dict,choice,block_grid):
+    grid_size = get_num_blocks(choice)
+    block_size = 500 // grid_size
+    heap_blks_read = reads_dict[choice]['heap_blks_read']
+    heap_blks_hit = reads_dict[choice]['heap_blks_hit']
+    index_blks_read = reads_dict[choice]['index_blks_read']
+    index_blks_hit = reads_dict[choice]['index_blks_hit'] 
+    toast_blks_read = reads_dict[choice]['toast_blks_read']
+    toast_blks_hit = reads_dict[choice]['toast_blks_hit'] 
+    tidx_blks_read = reads_dict[choice]['tidx_blks_read']
+    tidx_blks_hit = reads_dict[choice]['tidx_blks_hit'] 
+    for ctid, reads in data.items():
+        #TODO: redo rendering of blocks
+        index = list(data.keys()).index(ctid)
+        x0 = (index % grid_size) * block_size
+        y0 = (index // grid_size) * block_size
+        x1 = x0 + block_size
+        y1 = y0 + block_size
+        color = get_hue(reads)
+        block_grid.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
+        text_position = (x0 + block_size / 2, y0 + block_size / 2)  # Center of the block
+        if(reads < 10):
+            text_color = "black"
+        else:
+            text_color = "white"
+        block_grid.create_text(text_position, text=f"CTID {ctid}\nReads: {reads}", fill=text_color) 
 
 def create_block_visualization():
-    with open("ctidinfo.json", 'r') as file:
+    with open("readinfo.json", 'r') as file:
         data = json.load(file)
-    
+    reads_dict = {}
+    for item in data:
+        key = item[2]
+        values = {
+            "heap_blks_read": 0 if item[3] is None else item[3],
+            "heap_blks_hit": 0 if item[4] is None else item[4],
+            "index_blks_read": 0 if item[5] is None else item[5],
+            "index_blks_hit": 0 if item[6] is None else item[6],
+            "toast_blks_read":0 if item[7] is None else item[7],
+            "toast_blks_hit": 0 if item[8] is None else item[8],
+            "tidx_blks_read": 0 if item[9] is None else item[9],
+            "tidx_blks_hit": 0 if item[10] is None else item[10],
+        }
+        reads_dict[key] = values
+    table_list = list(reads_dict.keys())
+    print(reads_dict)
+    print(table_list)
     max_blocks = 100
     num_blocks = len(data)
     if num_blocks > max_blocks:
@@ -492,40 +544,31 @@ def create_block_visualization():
     print(grid_size)
 
     root = ctk.CTk()
+    table_var = ctk.StringVar()
     root.title("Block Visualization")
     canvas_frame = ctk.CTkFrame(root, bg_color="white")
-    info_frame = ctk.CTkFrame(root, bg_color="white")
     canvas_frame.pack(side=ctk.LEFT)
+    def on_table_select(choice):
+        update_block_grid(reads_dict,choice,block_grid)
+    table_dropdown = ctk.CTkComboBox(canvas_frame, variable=table_var, values=table_list, bg_color="white", command=on_table_select)
     block_grid = ctk.CTkCanvas(canvas_frame, width=500, height=500, bg="white")
+    table_dropdown.pack()
     block_grid.pack()
 
+    info_frame = ctk.CTkFrame(root, bg_color="white",fg_color="white")
     info_frame.pack(side=ctk.RIGHT, fill=ctk.BOTH, expand=True)    
     ctid_var = ctk.StringVar()
-    ctid_list = list(data.keys())
+    ctid_list = table_list
     def on_ctid_select(choice):
         update_grid(choice, scrollable_frame)
-    ctid_dropdown = ctk.CTkComboBox(info_frame, variable=ctid_var, values=ctid_list, command=on_ctid_select)
+    ctid_dropdown = ctk.CTkComboBox(info_frame, variable=ctid_var, values=ctid_list, command=on_ctid_select, bg_color="white")
     ctid_dropdown.pack()
 
     # Table (Treeview) for displaying tuples
-    scrollable_frame = ctk.CTkScrollableFrame(info_frame)
+    scrollable_frame = ctk.CTkScrollableFrame(info_frame,bg_color="white")
     scrollable_frame.pack(expand=True, fill='both')
     
-    block_size = 500 // grid_size
-    for ctid, reads in data.items():
-        index = list(data.keys()).index(ctid)
-        x0 = (index % grid_size) * block_size
-        y0 = (index // grid_size) * block_size
-        x1 = x0 + block_size
-        y1 = y0 + block_size
-        color = get_hue(reads)
-        block_grid.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
-        text_position = (x0 + block_size / 2, y0 + block_size / 2)  # Center of the block
-        if(reads < 10):
-            text_color = "black"
-        else:
-            text_color = "white"
-        block_grid.create_text(text_position, text=f"CTID {ctid}\nReads: {reads}", fill=text_color) 
+    
 
     # Run the Tkinter event loop
     root.config(bg='white')
