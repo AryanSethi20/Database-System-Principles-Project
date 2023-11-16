@@ -1,0 +1,12 @@
+digraph {
+	"Hash Join"
+	"Seq Scan"
+	"Hash Join" -> "Seq Scan"
+	"Seq Scan"
+	Hash
+	"Hash Join" -> Hash
+	Hash
+	"Seq Scan"
+	Hash -> "Seq Scan"
+	"Seq Scan"
+}
