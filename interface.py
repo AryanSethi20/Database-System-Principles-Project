@@ -95,6 +95,9 @@ def submitQuery():
     qep_panel_text.delete(1.0, 'end-1c')
 
     if not query:
+        analyze_panel_text.insert(tk.END, "Invalid Entry\n")
+        analyze_panel_text.configure(text_color='red')
+        analyze_panel_text.configure(state='disabled')
         qep_panel_text.insert(tk.END, "Invalid Entry\n")
         qep_panel_text.configure(text_color='red')
         qep_panel_text.configure(state='disabled')
@@ -103,8 +106,13 @@ def submitQuery():
         resetOutput()
         x = executeQuery(query, port, host, database, user, password)
         if not x:
+            analyze_panel_text.configure(state='normal')
+            analyze_panel_text.configure(text_color='red')
+            analyze_panel_text.insert(tk.END, "Cannot generate query analysis due to invalid query input.")
+            analyze_panel_text.configure(state='disabled')
+            qep_panel_text.configure(state='normal')
             qep_panel_text.configure(text_color='red')
-            qep_panel_text.insert(tk.END, "Check your SQL query")
+            qep_panel_text.insert(tk.END, "Cannot generate QEP in natural language due to invalid query input.")
             qep_panel_text.configure(state='disabled')
         else:
             annotated_query = QEPAnnotation()
