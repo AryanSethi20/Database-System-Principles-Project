@@ -6,14 +6,16 @@ import customtkinter as ctk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from explore import *
 
+def on_close():
+    window.destroy()
+    quit()
 
-def createQueryWindow(port_value, host_value, database_value, user_value, password_value):
+def createQueryWindow(port_value, host_value, database_value, user_value, password_value, recall = False):
     global port
     global host
     global database
     global user
     global password
-
     port = port_value
     host = host_value
     database = database_value
@@ -26,11 +28,13 @@ def createQueryWindow(port_value, host_value, database_value, user_value, passwo
     global analyze_panel_text
     global error_label
 
-    window = ctk.CTk()
-    #window.geometry("720x720")
-    window.state('zoomed')
-    window.title("PostgreSQL Database")
-    window.configure(bg_color = 'white')
+    if not recall:
+        window = ctk.CTk()
+        #window.geometry("720x720")
+        window.state('zoomed')
+        window.title("PostgreSQL Database")
+        window.configure(bg_color = 'white')
+        window.protocol("WM_DELETE_WINDOW", on_close)
 
     inner_frame = ctk.CTkFrame(window, fg_color='white')
 
@@ -82,7 +86,8 @@ def createQueryWindow(port_value, host_value, database_value, user_value, passwo
 
     inner_frame.pack(expand=True)
     
-    window.mainloop() 
+    if not recall:
+        window.mainloop() 
 
 def submitQuery():
     query = user_query.get(1.0, 'end-1c')
@@ -127,9 +132,15 @@ def deleteQuery():
     deleteQEPAnnotation()
 
 def createQEPTree():
+    for widget in window.winfo_children():
+        widget.destroy()
+    
     operatorSeq = []
     parents = []
     
+    plotFrame = tk.Frame(window)
+    plotFrame.pack(fill=tk.BOTH, expand=True)
+
     def getQEPforVisualization(filename):
         with open(f"{filename}") as file:
             data = json.load(file)
@@ -158,7 +169,8 @@ def createQEPTree():
         elif(queryplan['Node Type']=="Seq Scan"):
             nodeValue = f"Sequential Scan on {queryplan['Relation Name'].title()}"
             try:
-                replaced_filter = queryplan['Filter'].replace("::","-")
+                # replaced_filter = queryplan['Filter'].replace("::","-").replace(":","-")
+                replaced_filter = queryplan['Filter']
                 nodeValue += f"\nFilter - {replaced_filter}"
             except:
                 pass
@@ -177,7 +189,8 @@ def createQEPTree():
         elif(queryplan['Node Type'] == "Hash"):
             nodeValue += f"\nHash Buckets - {queryplan['Hash Buckets']}"
         
-        nodeValue.replace("::","-")
+        # nodeValue = nodeValue.replace("::","-")
+        nodeValue = nodeValue.replace(":","-")
         print(nodeValue)
         operatorSeq.append(nodeValue)
         parents.append(parentNo)
@@ -201,8 +214,14 @@ def createQEPTree():
 
         return graph
 
+    def return_to_main():
+        for widget in window.winfo_children():
+            widget.destroy()
+        createQueryWindow(port, host, database, user, password, recall=True)
+
     def visualize_tree(graph):
         global fig
+        fig, ax = plt.subplots()
         root_node = [node for node, in_degree in graph.in_degree() if in_degree == 0]
         pos = graphviz_layout(graph, prog='dot', root=root_node)
         graph = graph.reverse(copy=True)
@@ -247,8 +266,17 @@ def createQEPTree():
                     bbox=dict(boxstyle="round,pad=0.3", facecolor=node_color, edgecolor='black'))
         plt.axis('off')
         plt.title("Visualized Query Execution Plan") 
-        plt.show()
-    
+        canvas = FigureCanvasTkAgg(fig, master=plotFrame)
+        toolbar_frame = ctk.CTkFrame(master=plotFrame)
+        toolbar_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        toolbar = NavigationToolbar2Tk(canvas, toolbar_frame, pack_toolbar=False)
+        toolbar.update()
+        canvas_widget = canvas.get_tk_widget()
+        canvas_widget.pack(fill=tk.BOTH, expand=True)
+        toolbar.pack(side=tk.TOP, fill=tk.X)
+        #plt.show()
+        button_quit = ctk.CTkButton(master=toolbar_frame, text="Quit", command=return_to_main)
+        button_quit.pack(side=tk.BOTTOM, fill=tk.X)
     getQEPforVisualization(queryplanjson)
     tree = create_top_down_tree(operatorSeq, parents)
     visualize_tree(tree)
