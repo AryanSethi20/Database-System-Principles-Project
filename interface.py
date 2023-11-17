@@ -32,14 +32,16 @@ def createQueryWindow(port_value, host_value, database_value, user_value, passwo
     window.title("PostgreSQL Database")
     window.configure(bg_color = 'white')
 
-    querypanel = ctk.CTkFrame(window)
+    inner_frame = ctk.CTkFrame(window, fg_color='white')
+
+    querypanel = ctk.CTkFrame(inner_frame)
     querypanel_label = ctk.CTkLabel(querypanel, text="Enter SQL Query", font=('Arial', 16, 'bold'), text_color='black')
     user_query = CodeView(querypanel, height=40, lexer=pygments.lexers.SqlLexer, color_scheme="ayu-light")
     querypanel_label.grid(row=0, column=0, sticky="nsew", pady=5)
     user_query.grid(row=1, column=0, sticky="nsew", pady=5)
     querypanel.grid(rowspan=2, column=0, padx=20, pady=10)
 
-    button_frame = ctk.CTkFrame(window)
+    button_frame = ctk.CTkFrame(inner_frame)
     submitButton = ctk.CTkButton(button_frame, text='Submit', text_color = 'white', fg_color = '#04c256', hover_color = '#024d23', font=('Arial', 12), width = 200, command=submitQuery)
     clearbtn = ctk.CTkButton(button_frame, text="Reset", text_color = "white", fg_color = '#c20411', hover_color = '#5c040a',font=('Arial', 12), width = 200, command=deleteQuery)
     submitButton.grid(row=2, column=0, sticky="nsew", pady=5, padx=5)
@@ -56,27 +58,29 @@ def createQueryWindow(port_value, host_value, database_value, user_value, passwo
     qep_tree_graph.grid(row=1, column=0, sticky="nsew", pady=5)
     qep_tree.grid(row=0, column=1, padx=20, pady=10, sticky="ne")
     """
-    
-    analyze_panel = ctk.CTkFrame(window)
+
+    analyze_panel = ctk.CTkFrame(inner_frame)
     analyze_panel_label = ctk.CTkLabel(analyze_panel, text="Query Analysis", font=('Arial', 16, 'bold'), text_color='black')
     analyze_panel_text = ctk.CTkTextbox(analyze_panel, state='disabled', height=200, width=500, wrap='word', font=('Arial', 14), fg_color = '#FFFFCC', border_color='black', border_width=1)
     analyze_panel_label.grid(row=0, column=0, sticky="nsew", pady=5)
     analyze_panel_text.grid(row=1, column=0, sticky="nsew", pady=5)
     analyze_panel.grid(row=0, column=1, padx=20, pady=10)
      
-    qep_panel = ctk.CTkFrame(window)
+    qep_panel = ctk.CTkFrame(inner_frame)
     qep_panel_label = ctk.CTkLabel(qep_panel, text="Query Execution Plan In Natural Language", font=('Arial', 16, 'bold'), text_color='black')
     qep_panel_text = ctk.CTkTextbox(qep_panel, state='disabled', height=200, width=500, wrap='word', font=('Arial', 14), fg_color = '#FFFFCC', border_color='black', border_width=1)
     qep_panel_label.grid(row=0, columnspan=2, sticky="nsew", pady=5)
     qep_panel_text.grid(row=1, columnspan=2, sticky="nsew", pady=5)
     qep_panel.grid(row=1, column=1, padx=20, pady=10)
 
-    button_frame1 = ctk.CTkFrame(window)
+    button_frame1 = ctk.CTkFrame(inner_frame)
     qeptreebtn = ctk.CTkButton(button_frame1, text="View QEP Visualization", text_color = "white", fg_color = '#24a0ed', hover_color = '#237fb7', font=('Arial', 12), width = 200,command=createQEPTree)
     blockvisbtn = ctk.CTkButton(button_frame1, text="View Block Visualization", text_color="white", fg_color="#24a0ed", hover_color='#237fb7', font=('Arial', 12), width = 200, command=create_block_visualization)
     qeptreebtn.grid(row=2, column=0, sticky="nsew", pady=5, padx=5)
     blockvisbtn.grid(row=2, column=1, sticky="nsew", pady=5, padx=5)
     button_frame1.grid(row=2, column=1, padx=20, pady=10)
+
+    inner_frame.pack(expand=True)
     
     window.mainloop() 
 
