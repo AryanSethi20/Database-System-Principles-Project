@@ -74,9 +74,9 @@ def getQEPAnnotation():
         
         if nodeType == 'Aggregate':
             if info[i]['Strategy'] == "Hashed":
-                steps += f'Step {count}: Aggregate performed to hash rows of {tables[-1]} based on key {info[i]["Group Key"]}, and the resulting rows will be returned.\n'
+                steps += f'Step {count}: Aggregate performed to hash rows of {tables[-1]} based on key {info[i]["Group Key"]}, and resulting rows will be returned.\n'
             if info[i]['Strategy'] == "Sorted":
-                steps += f'Step {count}: Aggregate performed to sort rows of {tables[-1]} based on key {info[i]["Group Key"]}, and the resulting rows will be returned.\n'
+                steps += f'Step {count}: Aggregate performed to sort rows of {tables[-1]} based on key {info[i]["Group Key"]}, and resulting rows will be returned.\n'
             if info[i]['Strategy'] == "Plain":
                 steps += f'Step {count}: Aggregate performed on {tables[-1]} and resulting rows will be returned.\n'
 
@@ -95,7 +95,7 @@ def getQEPAnnotation():
         elif nodeType == 'CTE_Scan':
             steps += f'Step {count}: CTE_Scan performed on relation'
             tables.append(info[i]["Relation Name"])
-            # If index cond exist
+
             if "Index Cond" in info[i]:
                 steps += f' with condition(s): {info[i]["Index Cond"]}.\n'
 
@@ -118,7 +118,7 @@ def getQEPAnnotation():
         elif nodeType == 'Index Only Scan':
             steps += f'Step {count}: Index Only scan performed on \'{info[i]["Index Name"]}\'as data could be access from indexes directly'
             tables.append(info[i]["Relation Name"])
-            # If index cond exist
+
             if "Index Cond" in info[i]:
                 steps += f' under condition(s): {info[i]["Index Cond"]}'
             if 'Filter' in info[i]:
@@ -130,7 +130,7 @@ def getQEPAnnotation():
             if 'Filter' in info[i]:
                 steps+= f' {info[i]["Filter"]}'
             tables.append(info[i]["Relation Name"])
-            # If index cond exist
+
             if "Index Cond" in info[i]:
                 steps += f' {info[i]["Index Cond"]}'
             steps += '.\n'
@@ -197,26 +197,22 @@ def QEPAnalysis():
     buffers = extract_shared_blocks(queryplanjson)
 
     if results['most_expensive'] is not None and results['least_expensive'] is not None:
-        # Additional query analysis
         analysis += f"\nThis query has a total of {results['total_plans']} steps: ["
         for node_type, count in results['node_counts'].items():
             analysis += f"{count} {node_type}, "
+        analysis = analysis.rstrip(', ')
         analysis += "]"
         analysis += "\nThe most expensive step of this query was "
-        analysis += f"{results['most_expensive'][0]} (Path: {results['most_expensive'][2]}) with "
+        analysis += f"{results['most_expensive'][0]} with "
         analysis += f"actual total time of {results['most_expensive'][1]}ms." 
 
         analysis += "\nThe least expensive step of this query was "
-        analysis += f"{results['least_expensive'][0]} (Path: {results['least_expensive'][2]}) with "
+        analysis += f"{results['least_expensive'][0]} with "
         analysis += f"actual total time of {results['least_expensive'][1]}ms."
-
-        # Print the total difference
+        
         analysis += f"\nTotal difference between estimated and actual time taken was {results['total_difference']}ms"
-
-        # Display the results
         analysis = analysis.rstrip(', ')
 
-        # Average actual total time for each node type
         analysis += "\nAverage actual total time: "
         for node_type, average_time in results['average_actual_time'].items():
             analysis += f"{average_time}ms for {node_type}, "
@@ -227,72 +223,54 @@ def QEPAnalysis():
         analysis += f"\nTotal Shared Dirtied Blocks: {buffers['Shared Dirtied Blocks']}"
         analysis += f"\nTotal Shared Written Blocks: {buffers['Shared Written Blocks']}"
 
-    #analysisList.append(analysis)    
     return analysis
 
 def analyze_execution_plan(json_file_path):
-    # Reading the contents of the JSON file
     with open(json_file_path, 'r') as file:
         json_reply = file.read()
 
-    # Parsing the JSON
     data = json.loads(json_reply)
-
-    # Initializing attributes for most and least expensive steps
     mostexp = None
     leastexp = None
     totaldiff = 0
-
-    # Additional attributes for analysis
     total_plans = 0
     node_counts = {}
     total_actual_time = {}
 
-    # Function to traverse the nested structure and extract information
     def process_plan(plan, path=[]):
         nonlocal mostexp, leastexp, totaldiff, total_plans, node_counts, total_actual_time
 
         if 'Plans' in plan:
-            # Recursively process each child plan
             child_plans = plan['Plans']
+            print(f"child_plans = {child_plans}")
             for i, child_plan in enumerate(child_plans):
                 process_plan(child_plan, path + [i + 1])
 
         total_plans += 1
 
         node_type = plan.get('Node Type', '')
+        print(f"node_type = {node_type}")
         actual_total_time = round(plan.get('Actual Total Time', 0), 3)
         estimated_total_time = round(plan.get('Total Cost', 0), 3)
 
         current_path = '.'.join(map(str, path))
         
-        # Update node counts
         node_counts[node_type] = node_counts.get(node_type, 0) + 1
 
-        # Update total actual time for each node type
         total_actual_time[node_type] = total_actual_time.get(node_type, 0) + actual_total_time
 
-        # The most expensive step
         if mostexp is None or actual_total_time > mostexp[1]:
             mostexp = (node_type, actual_total_time, current_path)
 
-        # The least expensive step
         if leastexp is None or actual_total_time < leastexp[1]:
             leastexp = (node_type, actual_total_time, current_path)
 
-        # Difference in estimated total time and actual total time
         diff = round(estimated_total_time - actual_total_time, 3)
-
-        # Calculating the total difference
         totaldiff += diff
 
-    # Traverse the top-level plans
-    if "Plans" in data[0][0][0]['Plan']:
-        top_level_plans = data[0][0][0]['Plan']['Plans']
-        for i, top_level_plan in enumerate(top_level_plans):
-            process_plan(top_level_plan, [i + 1])
+    process_plan(data[0][0][0]['Plan'], [0])
 
-    # Return the results
+
     results = {
         'most_expensive': mostexp,
         'least_expensive': leastexp,
@@ -334,7 +312,6 @@ def extract_shared_blocks(plan):
     traverse(plan)
     return shared_blocks
 
-
 def executeQuery(text, port_value, host_value, database_value, user_value, password_value):
     try:
         print("trying to create connection")
@@ -366,132 +343,6 @@ def executeQuery(text, port_value, host_value, database_value, user_value, passw
         queryExecuted = False
 
     return queryExecuted
-
-def createQEPTree():
-    operatorSeq = []
-    parents = []
-    
-    def getQEPforVisualization(filename):
-        with open(f"{filename}") as file:
-            data = json.load(file)
-            plan = data[0][0][0]["Plan"]
-        iterateOverQEP(plan, -1)
-
-    def iterateOverQEP(queryplan, parentNo):
-        lastNum = parentNo
-        nodeValue = f"{queryplan['Node Type']}"
-        #Handling addition of information to node for different sorts
-        if(queryplan['Node Type'] == "Sort"):
-            nodeValue = f"{queryplan['Sort Method'].title()} Sort On {queryplan['Sort Space Type'].title()}"
-            #FIXME: takes too much space
-            nodeValue += "\nSort Key - " + ", ".join([s.replace(":", "-") for s in queryplan['Sort Key']])
-
-        #Handling addition of information to node for different joins
-        elif(queryplan['Node Type']=="Hash Join"):
-            nodeValue = f"{queryplan['Join Type'].title()} Hash Join"
-            #FIXME: takes too much space
-            nodeValue += f"\nHash Condition - {queryplan['Hash Cond']}"
-
-        elif(queryplan['Node Type']=="Nested Loop"):
-            nodeValue = f"{queryplan['Join Type'].title()} Nested Loop Join"
-
-        #Handling addition of information to node for different scans
-        elif(queryplan['Node Type']=="Seq Scan"):
-            nodeValue = f"Sequential Scan on {queryplan['Relation Name'].title()}"
-            try:
-                replaced_filter = queryplan['Filter'].replace("::","-")
-                nodeValue += f"\nFilter - {replaced_filter}"
-            except:
-                pass
-
-        elif(queryplan['Node Type']=="Index Scan"):
-            nodeValue = f"Index Scan on {queryplan['Relation Name'].title()} with {queryplan['Index Name']}"
-            #nodeValue += f"\nIndex Name - {queryplan['Index Name'].title()}"
-            # nodeValue += f"\nScan Direction - "
-            #FIXME - takes too much space
-            nodeValue += f"\nIndex Condition - {queryplan['Index Cond'].title()}"
-
-        #Handling addition of information to node for Aggregate
-        elif(queryplan['Node Type']=="Aggregate"):
-            nodeValue += f"\nStrategy - {queryplan['Strategy'].title()}"
-        
-        elif(queryplan['Node Type'] == "Hash"):
-            nodeValue += f"\nHash Buckets - {queryplan['Hash Buckets']}"
-        
-        nodeValue.replace("::","-")
-        print(nodeValue)
-        operatorSeq.append(nodeValue)
-        parents.append(parentNo)
-        info.append(queryplan)
-        lastNum = len(parents) - 1
-        if "Plans" in queryplan:
-            for plan in queryplan["Plans"]:
-                iterateOverQEP(plan, lastNum)
-        else:
-            return
-        
-    def create_top_down_tree(node, parent):
-        graph = nx.DiGraph()
-
-        for i, node_type in enumerate(node):
-            graph.add_node(i, label=node_type)
-
-        for i, p in enumerate(parent):
-            if p != -1:
-                graph.add_edge(p, i)
-
-        return graph
-
-    def visualize_tree(graph):
-        root_node = [node for node, in_degree in graph.in_degree() if in_degree == 0]
-        pos = graphviz_layout(graph, prog='dot', root=root_node)
-        graph = graph.reverse(copy=True)
-        #FIXME: this works but it's a bit bugged still
-        # For each node, draw a larger box to fit the text
-        max_node_size = 0
-        for node, (x, y) in pos.items():
-            label = graph.nodes[node]['label']
-            size = len(label) * 3 
-            if size > max_node_size:
-                max_node_size = size 
-        print(f"max node size: {max_node_size}")
-        nx.draw_networkx_edges(graph, pos, node_size=max_node_size)
-        for node, (x, y) in pos.items():
-            label = graph.nodes[node]['label']
-            #TODO: write a function for this code if you have time later
-            node_color = "grey"
-            if 'Nested Loop Join' in label:
-                node_color = "#FFDD32"
-            if "Hash Join" in label:
-                node_color = "#FFDD32"
-            if 'Sequential Scan' in label:
-                node_color = "#78C679"
-            if 'Index Scan' in label:
-                node_color = "#41AB5D"
-            if "Hash Buckets" in label:
-                node_color = "#6BAED6"
-            if label == "Memoize":
-                node_color = "#3182BD"
-            if 'Sort' in label:
-                node_color = "#9E9AC8"
-            if 'Aggregate' in label:
-                node_color = "#FC9272"
-            if 'Gather Merge' in label:
-                node_color = "#DE2D26"
-            if label == "Gather":
-                node_color = "#DE2D26"
-            size = len(label) * 0.3 + 50
-            nx.draw_networkx_nodes(graph, pos, [node], node_size=size, node_color='none')
-            # Draw the label manually to ensure it's placed correctly
-            plt.text(x, y, label, fontsize=8, ha='center', va='center', alpha=0.75, 
-                    bbox=dict(boxstyle="round,pad=0.3", facecolor=node_color, edgecolor='black'))
-        plt.axis('off')
-        plt.title("Visualized Query Execution Plan") 
-        plt.show()
-    
-    getQEPforVisualization(queryplanjson)
-    tree = create_top_down_tree(operatorSeq, parents)
-    visualize_tree(tree)
 
 def get_hue(reads):
     intensity = min(255, reads * 5)
