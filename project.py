@@ -99,8 +99,8 @@ def createQueryWindow():
     global error_label
 
     window = ctk.CTk()
-    window.geometry("720x720")
-    #window.state('zoomed')
+    #window.geometry("720x720")
+    window.state('zoomed')
     window.title("PostgreSQL Database")
     window.configure(bg_color = 'white')
 

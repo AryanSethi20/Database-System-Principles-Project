@@ -194,6 +194,7 @@ def QEPAnalysis():
     analysis += f"Planning Time = {planningTime} ms\n"
     analysis += f"Total Cost = {totalCost}\n"
     results = analyze_execution_plan(queryplanjson)
+    buffers = extract_shared_blocks(queryplanjson)
 
     if results['most_expensive'] is not None and results['least_expensive'] is not None:
         # Additional query analysis
@@ -220,6 +221,11 @@ def QEPAnalysis():
         for node_type, average_time in results['average_actual_time'].items():
             analysis += f"{average_time}ms for {node_type}, "
         analysis = analysis.rstrip(', ')
+
+        analysis += f"\n\nTotal Shared Hit Blocks: {buffers['Shared Hit Blocks']}"
+        analysis += f"\nTotal Shared Read Blocks: {buffers['Shared Read Blocks']}"
+        analysis += f"\nTotal Shared Dirtied Blocks: {buffers['Shared Dirtied Blocks']}"
+        analysis += f"\nTotal Shared Written Blocks: {buffers['Shared Written Blocks']}"
 
     #analysisList.append(analysis)    
     return analysis
@@ -297,6 +303,36 @@ def analyze_execution_plan(json_file_path):
     }
 
     return results
+
+def extract_shared_blocks(plan):
+    with open(f"{plan}") as file:
+        data = json.load(file)
+        plan = data[0][0][0]["Plan"]
+
+    shared_blocks = {
+        "Shared Hit Blocks": 0,
+        "Shared Read Blocks": 0,
+        "Shared Dirtied Blocks": 0,
+        "Shared Written Blocks": 0
+    }
+
+    def traverse(node):
+        nonlocal shared_blocks
+        if "Shared Hit Blocks" in node:
+            shared_blocks["Shared Hit Blocks"] += node["Shared Hit Blocks"]
+        if "Shared Read Blocks" in node:
+            shared_blocks["Shared Read Blocks"] += node["Shared Read Blocks"]
+        if "Shared Dirtied Blocks" in node:
+            shared_blocks["Shared Dirtied Blocks"] += node["Shared Dirtied Blocks"]
+        if "Shared Written Blocks" in node:
+            shared_blocks["Shared Written Blocks"] += node["Shared Written Blocks"]
+
+        if "Plans" in node:
+            for child_plan in node["Plans"]:
+                traverse(child_plan)
+
+    traverse(plan)
+    return shared_blocks
 
 def executeQuery(text, port_value, host_value, database_value, user_value, password_value):
     try:
