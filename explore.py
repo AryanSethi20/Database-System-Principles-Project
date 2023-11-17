@@ -95,7 +95,7 @@ def getQEPAnnotation():
         elif nodeType == 'CTE_Scan':
             steps += f'Step {count}: CTE_Scan performed on relation'
             tables.append(info[i]["Relation Name"])
-            # If index cond exist
+
             if "Index Cond" in info[i]:
                 steps += f' with condition(s): {info[i]["Index Cond"]}.\n'
 
@@ -118,7 +118,7 @@ def getQEPAnnotation():
         elif nodeType == 'Index Only Scan':
             steps += f'Step {count}: Index Only scan performed on \'{info[i]["Index Name"]}\'as data could be access from indexes directly'
             tables.append(info[i]["Relation Name"])
-            # If index cond exist
+
             if "Index Cond" in info[i]:
                 steps += f' under condition(s): {info[i]["Index Cond"]}'
             if 'Filter' in info[i]:
@@ -130,7 +130,7 @@ def getQEPAnnotation():
             if 'Filter' in info[i]:
                 steps+= f' {info[i]["Filter"]}'
             tables.append(info[i]["Relation Name"])
-            # If index cond exist
+
             if "Index Cond" in info[i]:
                 steps += f' {info[i]["Index Cond"]}'
             steps += '.\n'
@@ -197,26 +197,22 @@ def QEPAnalysis():
     buffers = extract_shared_blocks(queryplanjson)
 
     if results['most_expensive'] is not None and results['least_expensive'] is not None:
-        # Additional query analysis
         analysis += f"\nThis query has a total of {results['total_plans']} steps: ["
         for node_type, count in results['node_counts'].items():
             analysis += f"{count} {node_type}, "
+        analysis = analysis.rstrip(', ')
         analysis += "]"
         analysis += "\nThe most expensive step of this query was "
-        analysis += f"{results['most_expensive'][0]} (Path: {results['most_expensive'][2]}) with "
+        analysis += f"{results['most_expensive'][0]} with "
         analysis += f"actual total time of {results['most_expensive'][1]}ms." 
 
         analysis += "\nThe least expensive step of this query was "
-        analysis += f"{results['least_expensive'][0]} (Path: {results['least_expensive'][2]}) with "
+        analysis += f"{results['least_expensive'][0]} with "
         analysis += f"actual total time of {results['least_expensive'][1]}ms."
-
-        # Print the total difference
+        
         analysis += f"\nTotal difference between estimated and actual time taken was {results['total_difference']}ms"
-
-        # Display the results
         analysis = analysis.rstrip(', ')
 
-        # Average actual total time for each node type
         analysis += "\nAverage actual total time: "
         for node_type, average_time in results['average_actual_time'].items():
             analysis += f"{average_time}ms for {node_type}, "
@@ -227,72 +223,54 @@ def QEPAnalysis():
         analysis += f"\nTotal Shared Dirtied Blocks: {buffers['Shared Dirtied Blocks']}"
         analysis += f"\nTotal Shared Written Blocks: {buffers['Shared Written Blocks']}"
 
-    #analysisList.append(analysis)    
     return analysis
 
 def analyze_execution_plan(json_file_path):
-    # Reading the contents of the JSON file
     with open(json_file_path, 'r') as file:
         json_reply = file.read()
 
-    # Parsing the JSON
     data = json.loads(json_reply)
-
-    # Initializing attributes for most and least expensive steps
     mostexp = None
     leastexp = None
     totaldiff = 0
-
-    # Additional attributes for analysis
     total_plans = 0
     node_counts = {}
     total_actual_time = {}
 
-    # Function to traverse the nested structure and extract information
     def process_plan(plan, path=[]):
         nonlocal mostexp, leastexp, totaldiff, total_plans, node_counts, total_actual_time
 
         if 'Plans' in plan:
-            # Recursively process each child plan
             child_plans = plan['Plans']
+            print(f"child_plans = {child_plans}")
             for i, child_plan in enumerate(child_plans):
                 process_plan(child_plan, path + [i + 1])
 
         total_plans += 1
 
         node_type = plan.get('Node Type', '')
+        print(f"node_type = {node_type}")
         actual_total_time = round(plan.get('Actual Total Time', 0), 3)
         estimated_total_time = round(plan.get('Total Cost', 0), 3)
 
         current_path = '.'.join(map(str, path))
         
-        # Update node counts
         node_counts[node_type] = node_counts.get(node_type, 0) + 1
 
-        # Update total actual time for each node type
         total_actual_time[node_type] = total_actual_time.get(node_type, 0) + actual_total_time
 
-        # The most expensive step
         if mostexp is None or actual_total_time > mostexp[1]:
             mostexp = (node_type, actual_total_time, current_path)
 
-        # The least expensive step
         if leastexp is None or actual_total_time < leastexp[1]:
             leastexp = (node_type, actual_total_time, current_path)
 
-        # Difference in estimated total time and actual total time
         diff = round(estimated_total_time - actual_total_time, 3)
-
-        # Calculating the total difference
         totaldiff += diff
 
-    # Traverse the top-level plans
-    if "Plans" in data[0][0][0]['Plan']:
-        top_level_plans = data[0][0][0]['Plan']['Plans']
-        for i, top_level_plan in enumerate(top_level_plans):
-            process_plan(top_level_plan, [i + 1])
+    process_plan(data[0][0][0]['Plan'], [0])
 
-    # Return the results
+
     results = {
         'most_expensive': mostexp,
         'least_expensive': leastexp,
@@ -477,6 +455,3 @@ def create_block_visualization():
     # Run the Tkinter event loop
     root.config(bg='white')
     root.mainloop()
-
-# TODO - comment this out when submitting final code
-create_block_visualization()
