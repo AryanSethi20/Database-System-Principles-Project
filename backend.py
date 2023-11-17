@@ -363,7 +363,7 @@ def handle_query():
     except Exception as e:
         return jsonify({"error": str(e)})
 
-def backend():    
+if __name__ == "__main__":
     query = """select
       supp_nation,
       cust_nation,
