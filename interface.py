@@ -750,10 +750,14 @@ def get_pie_chart(table,reads_dict):
     for key in read_information:
         sizes.append(read_information[key])
         labels.append(key.replace("_"," ").replace("blks","blocks").title())
+    print("sizes for pie chart")
+    print(sizes)
+    print("labels for pie chart")
+    print(labels)
     fig = Figure(figsize=(8, 8), dpi=100)
     fig.suptitle(f"Profile of Block Reads For Relation {table.title()}")
     subplot = fig.add_subplot(111)
-    subplot.pie(sizes, labels=labels, autopct="%1.0f%%")    
+    subplot.pie(sizes, labels=labels, autopct="%1.2f%%")    
     return fig
     
 def get_block_number(count):
@@ -812,6 +816,8 @@ def create_ctid_table():
     
     def populate_table():
         try:
+            for widget in table_frame.winfo_children():
+                widget.destroy()
             table_name = table_dropdown.get()
             ctid_value = ctid_dropdown.get()
             print(f"table name: {table_name}, ctid value: {ctid_value}")
@@ -828,29 +834,33 @@ def create_ctid_table():
             tuples = response.json().get('accessed')
             logging.debug(f"Tuples: {tuples}")
             #TODO: call endpoint here, then use entry.insert() to control what values are being input into the cell
-            for widget in table_frame.winfo_children():
-                widget.destroy()
             # TODO: change this based on the output from the API call
             rows, cols = len(tuples), len(col_names)
+
+            for c in range(len(col_names)):
+                entry = ctk.CTkTextbox(table_frame, width=250, wrap="word",border_spacing=0)
+                entry.grid(row=0, column=c)
+                #TODO: change this based on the actual data
+                entry.insert("0.0",col_names[c]) 
+
             for r in range(rows):
-                for c in range(1, cols+1):
+                for c in range(cols):
                     #TODO - change this condition to if the block was read
                     if tuples[r][-1] == "Yes":
                         fg_color = "#e7ffce"
                     else:
                         fg_color = "white"
-                    entry = ctk.CTkEntry(table_frame, width=20, fg_color=fg_color)
-                    entry.grid(row=r, column=c, sticky='nsew')
+                    entry = ctk.CTkTextbox(table_frame, width=250, fg_color=fg_color, wrap="word",border_spacing=0)
+                    entry.grid(row=r+1, column=c)
                     #TODO: change this based on the actual data
-                    entry.insert(0, tuples[r][c])
-
-            # Configure weight for columns and rows
+                    entry.insert("0.0",tuples[r][c+1])
+            
             for i in range(cols):
                 table_frame.grid_columnconfigure(i, weight=1)
             for i in range(rows):
                 table_frame.grid_rowconfigure(i, weight=1)
 
-            table_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox()))
+            table_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
             
         except Exception as e:
             logging.error(f"Error while trying to execute the tuples endpoint: {e}")
@@ -882,7 +892,7 @@ def create_ctid_table():
     def configure_canvas(event):
         canvas.itemconfig(canvas_window, width=event.width)
 
-    # canvas.bind("<Configure>", configure_canvas)
+    canvas.bind("<Configure>", configure_canvas)
     # # Table drawing starts here
     # rows, cols = 10, 10  
     # for r in range(rows):

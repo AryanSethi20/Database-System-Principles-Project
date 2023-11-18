@@ -126,7 +126,7 @@ create table public.orders
     o_orderdate date not null,
     o_orderpriority character(15) collate pg_catalog."default" not null,
     o_clerk character(15) collate pg_catalog."default" not null,
-    o_shipprority integer not null,
+    o_shippriority integer not null,
     o_comment character varying(79) collate pg_catalog."default" not null,
     constraint orders_pkey primary key (o_orderkey),
     constraint fk_orders foreign key (o_custkey)
