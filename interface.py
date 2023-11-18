@@ -87,7 +87,7 @@ def login(port_entry, host_entry, database_entry, user_entry, password_entry, er
         response = requests.post("http://127.0.0.1:5000/connection", json=data)
         token = response.json().get('token')
 
-        if response.status_code==201:
+        if response.status_code==200:
             login_window.destroy()
             createQueryWindow()
         else:
@@ -209,7 +209,7 @@ def submitQuery():
                 result = response.json()
                 queryOutput = result.get('results')
                 logging.debug(f"Query Output: {queryOutput}")
-                readOutput = result.get('statistics')
+                readOutput = result.get('statistics') + result.get('count')
                 logging.debug(f"Stats Output: {readOutput}")
 
                 # Write the results of the request in a file for faster processing
@@ -458,9 +458,9 @@ def getQEPAnnotation():
         
         if nodeType == 'Aggregate':
             if info[i]['Strategy'] == "Hashed":
-                steps += f'Step {count}: Aggregate performed to hash rows of {tables[-1]} based on key {info[i]["Group Key"]}, and the resulting rows will be returned.\n'
+                steps += f'Step {count}: Aggregate performed to hash rows of {tables[-1]} based on key {info[i]["Group Key"]}, and resulting rows will be returned.\n'
             if info[i]['Strategy'] == "Sorted":
-                steps += f'Step {count}: Aggregate performed to sort rows of {tables[-1]} based on key {info[i]["Group Key"]}, and the resulting rows will be returned.\n'
+                steps += f'Step {count}: Aggregate performed to sort rows of {tables[-1]} based on key {info[i]["Group Key"]}, and resulting rows will be returned.\n'
             if info[i]['Strategy'] == "Plain":
                 steps += f'Step {count}: Aggregate performed on {tables[-1]} and resulting rows will be returned.\n'
 
@@ -587,6 +587,7 @@ def QEPAnalysis():
         analysis += f"\nThis query has a total of {results['total_plans']} steps: ["
         for node_type, count in results['node_counts'].items():
             analysis += f"{count} {node_type}, "
+        analysis = analysis.rstrip(', ')
         analysis += "]"
         analysis += "\nThe most expensive step of this query was "
         analysis += f"Step {most_expensive_step} : {results['most_expensive'][0]} with "

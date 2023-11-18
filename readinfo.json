@@ -81,7 +81,7 @@
     16464,
     "public",
     "orders",
-    17367,
+    0,
     0,
     0,
     0,
@@ -94,13 +94,23 @@
     16474,
     "public",
     "lineitem",
-    24357,
-    6560,
-    12838,
-    70042,
+    0,
+    0,
+    0,
+    0,
     null,
     null,
     null,
     null
-  ]
+  ],
+  {
+    "customer": 3736,
+    "lineitem": 112600,
+    "nation": 1,
+    "orders": 26136,
+    "part": 4128,
+    "partsupp": 17560,
+    "region": 1,
+    "supplier": 223
+  }
 ]

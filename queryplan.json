@@ -7,6 +7,9 @@
       "Actual Startup Time": 2885.068,
       "Actual Total Time": 2887.381,
       "Async Capable": false,
+      "Group Key": [
+        "orders.o_orderpriority"
+      ],
       "Local Dirtied Blocks": 0,
       "Local Hit Blocks": 0,
       "Local Read Blocks": 0,

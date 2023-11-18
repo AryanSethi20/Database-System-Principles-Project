@@ -1,16 +1,12 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request
 import jwt
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import json
 from datetime import datetime, timedelta
-from sql_metadata import Parser
-import sqlparse
-from sqlparse.sql import Identifier, Parenthesis
-from sqlparse.tokens import Keyword, DML
 import re
 import pdb
-
+import logging
 # Storing the DB Connections and credentials in memory
 CONNECTIONS = {}
 
@@ -64,6 +60,30 @@ def run_explain_query(conn, query, explain="BUFFERS ON, ANALYZE ON, COSTS ON, VE
     finally:
         cur.close()
    
+def extract_scan_info(table):
+    with open('queryplan.json', 'r') as file:
+        data = json.load(file)
+        plan = data[0]['Plan']
+    scan_info = []
+    def traverse_plans(node):
+        if "Node Type" in node and "Scan" in node["Node Type"]:
+            relation_name = node.get("Relation Name", "N/A")
+            if relation_name == table:
+              filter_condition = node.get("Filter", "N/A")
+              scan_info.append((relation_name, filter_condition))
+
+        if "Plans" in node:
+            for subplan in node["Plans"]:
+                traverse_plans(subplan)
+
+    traverse_plans(plan)
+    relation, filter = scan_info[-1][0], scan_info[-1][1]
+    if filter != "N/A":
+        query = f"WITH all_blocks AS ( SELECT DISTINCT (ctid::text::point)[0] AS block_id FROM {relation} ) SELECT ab.block_id, COALESCE(COUNT(*), 0) AS tuple_count FROM all_blocks ab LEFT JOIN {relation} ON ab.block_id = ({relation}.ctid::text::point)[0] AND {filter} GROUP BY ab.block_id ORDER BY ab.block_id;"
+    else:
+        query = f"WITH all_blocks AS ( SELECT DISTINCT (ctid::text::point)[0] AS block_id FROM {relation} ) SELECT ab.block_id, COALESCE(COUNT(*), 0) AS tuple_count FROM all_blocks ab LEFT JOIN {relation} ON ab.block_id = ({relation}.ctid::text::point)[0] GROUP BY ab.block_id ORDER BY ab.block_id;"
+    return query
+
 
 def print_plan(plan, level=0):
     indent = "    " * level
@@ -104,41 +124,28 @@ def connect_to_db():
         
         CONNECTIONS[token] = conn
 
-        return {"token": token}, 201
+        return {"token": token}, 200
     except Exception as e:
-        print(f"Error connecting to the database: {e}")
-        return {"error": "Database connection failed. Try again!"}, 403
+        logging.error(f"Error connecting to the database: {e}")
+        return {"error": "Database connection failed. Try again!"}, 400
 
-
-# @app.route('/tables', methods=['GET'])
-# def database_tables():
-#     token = request.headers.get('Authorization').split(" ")[0]
-#     try:
-#         tables = execute_sql_query(CONNECTIONS[token], "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname!='pg_catalog' AND schemaname!='information_schema'")
-#         tables = [j for i in tables for j in i]
-#         return {"Tables": tables}, 200
-#     except Exception as e:
-#         return {"Error:": str(e)}, 400
-    
 
 @app.route('/block', methods=['POST'])
 def get_blocks_accessed():
     '''
-    This function is an endpoint which helps visualise the blocks. It gets a table and its particular block as part of the body in the request, and returns
-    tuples in that block and some statistics related to the block
+    This function is an endpoint which helps visualise the blocks. It gets a table and returns the tuples accessed from that particular block
     '''
     token = request.headers.get('Authorization').split(" ")[0]
     try:
         data = request.get_json()
         table = data.get('table')
-        block = data.get('block')
-        query = data.get('query')
-        ctid_results = execute_sql_query(CONNECTIONS[token], f"SELECT ctid, * FROM {table} WHERE (ctid::text::point)[0] = {block-1} ORDER BY ctid")
-        count = execute_sql_query(CONNECTIONS[token], f"SELECT COUNT(*) FROM {table} WHERE (ctid::text::point)[0] = {block-1}")
-        # res = run_explain_query(CONNECTIONS[token], query, f"ANALYZE, BUFFERS ON, COSTS OFF, FORMAT JSON")
-        return {"Count": count[0][0], "query": ctid_results}
+        results = execute_sql_query(CONNECTIONS[token], extract_scan_info(table))
+        results = {int(key): value for key,value in results}
+        
+        return {"Results": results}, 200
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return {"error": str(e)}, 400
+
 
 @app.route('/query', methods=['POST'])
 def handle_query():
@@ -158,7 +165,9 @@ def handle_query():
         stats = execute_sql_query(CONNECTIONS[token], "SELECT pg_stat_reset();")
         results = run_explain_query(CONNECTIONS[token], query)
         stats = execute_sql_query(CONNECTIONS[token], "SELECT * FROM pg_statio_user_tables;")
-
+        blocks = execute_sql_query(CONNECTIONS[token], "SELECT relname AS table_name, pg_relation_size(pg_class.oid) / current_setting('block_size')::integer AS total_blocks FROM pg_class JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace WHERE relkind = 'r' AND nspname NOT IN ('pg_catalog', 'information_schema');")
+        blocks = [{key: value for key, value in blocks}]
+        logging.debug(blocks)
         # If the method to explain query didn't work properly and instead just gave an empty response, this condition is executed
         if results is None:
             raise Exception("Failed to execute query")
@@ -169,7 +178,7 @@ def handle_query():
             for plan in results:
                 print_plan(plan["Plan"])
 
-        return {"results": results, "statistics": stats}, 200
+        return {"results": results, "statistics": stats, "count": blocks}, 200
 
     except jwt.ExpiredSignatureError:
         return {"error": "Token has expired"}, 400
@@ -177,5 +186,9 @@ def handle_query():
         return {"error": str(e)}, 400
 
 
-def backend():    
+def backend():
+    logging.basicConfig(level=logging.INFO)
+    app.run()
+
+if __name__ == '__main__':
     app.run()
