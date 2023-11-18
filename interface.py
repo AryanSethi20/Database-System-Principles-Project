@@ -761,13 +761,39 @@ def get_block_number(table):
     # FIXME: Needs to return a list for it to be accepted by the tkinter dropdown
     return ["1","2","3","4","5","6","7","8","9","10"]
 
-def get_tables():
-    return ['tablea', 'tableb','tablec']
-
 
 def create_ctid_table():
     for widget in window.winfo_children():
         widget.destroy()
+
+    with open("readinfo.json", 'r') as file:
+        data = json.load(file)
+    reads_dict = {}
+    for item in data:
+        key = item[2]
+        values = {
+            "heap_blks_read": 0 if item[3] is None else item[3],
+            "heap_blks_hit": 0 if item[4] is None else item[4],
+            "index_blks_read": 0 if item[5] is None else item[5],
+            "index_blks_hit": 0 if item[6] is None else item[6],
+            "toast_blks_read":0 if item[7] is None else item[7],
+            "toast_blks_hit": 0 if item[8] is None else item[8],
+            "tidx_blks_read": 0 if item[9] is None else item[9],
+            "tidx_blks_hit": 0 if item[10] is None else item[10],
+        }
+        all_values_zero = all(value == 0 for value in values.values())
+        if(all_values_zero):
+            pass
+        else:
+            reads_dict[key] = values
+    table_list = list(reads_dict.keys())
+    #print(reads_dict)
+    print(table_list)
+    ctid_count = []
+    for table in table_list:
+        ctid_count.append(data[-1][table])
+    print(ctid_count)
+
     container = ctk.CTkFrame(window, bg_color="white")
     container.pack(fill=ctk.BOTH, expand=True)
 
@@ -775,18 +801,19 @@ def create_ctid_table():
     scroll_y = ctk.CTkScrollbar(container, orientation="vertical", command=canvas.yview)
     scroll_x = ctk.CTkScrollbar(container, orientation='horizontal', command=canvas.xview)
     canvas.configure(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
-
     scroll_y.pack(side='right', fill='y')
     scroll_x.pack(side='bottom', fill='x')
     canvas.pack(side='left', fill=ctk.BOTH, expand=True)
     dropdown_frame = ctk.CTkFrame(canvas)
     dropdown_frame.pack(side="top", expand=True, fill = ctk.BOTH)
-    table_list = get_tables()
     table_dropdown = ctk.CTkComboBox(dropdown_frame, values=table_list)
     ctid_dropdown = ctk.CTkComboBox(dropdown_frame, values=get_block_number(table_dropdown.get()))
     submit_button = ctk.CTkButton(dropdown_frame, text="Submit")
     quit_button = ctk.CTkButton(dropdown_frame, text="Quit", command=return_to_main)
-    ctid_dropdown.pack(tk.LEFT, )
+    table_dropdown.pack(tk.LEFT)
+    ctid_dropdown.pack(tk.LEFT)
+    submit_button.pack(tk.RIGHT)
+    quit_button.pack(tk.RIGHT)
     table_frame = ctk.CTkFrame(canvas)
     canvas_window = canvas.create_window((0, 0), window=table_frame, anchor='nw')
 
