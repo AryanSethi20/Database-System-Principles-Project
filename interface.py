@@ -153,8 +153,10 @@ def createQueryWindow(recall = False):
     button_frame1 = ctk.CTkFrame(inner_frame)
     qeptreebtn = ctk.CTkButton(button_frame1, text="View QEP Visualization", text_color = "white", fg_color = '#24a0ed', hover_color = '#237fb7', font=('Arial', 12), width = 200,command=createQEPTree)
     blockvisbtn = ctk.CTkButton(button_frame1, text="View Block Visualization", text_color="white", fg_color="#24a0ed", hover_color='#237fb7', font=('Arial', 12), width = 200, command=create_block_visualization)
+    queryctidbtn = ctk.CTkButton(button_frame1, text="Query CTIDs", text_color="white", fg_color="#24a0ed", hover_color='#237fb7', font=('Arial', 12), width = 200, command=create_ctid_table)
     qeptreebtn.grid(row=2, column=0, sticky="nsew", pady=5, padx=5)
     blockvisbtn.grid(row=2, column=1, sticky="nsew", pady=5, padx=5)
+    queryctidbtn.grid(row=2, column=2, sticky="nsew", pady=5, padx=5)
     button_frame1.grid(row=2, column=1, padx=20, pady=10)
 
     inner_frame.pack(expand=True)
@@ -759,6 +761,55 @@ def get_block_number(table):
     # FIXME: Needs to return a list for it to be accepted by the tkinter dropdown
     return ["1","2","3","4","5","6","7","8","9","10"]
 
+def get_tables():
+    return ['tablea', 'tableb','tablec']
+
+
+def create_ctid_table():
+    for widget in window.winfo_children():
+        widget.destroy()
+    container = ctk.CTkFrame(window, bg_color="white")
+    container.pack(fill=ctk.BOTH, expand=True)
+
+    canvas = tk.Canvas(container)
+    scroll_y = ctk.CTkScrollbar(container, orientation="vertical", command=canvas.yview)
+    scroll_x = ctk.CTkScrollbar(container, orientation='horizontal', command=canvas.xview)
+    canvas.configure(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
+
+    scroll_y.pack(side='right', fill='y')
+    scroll_x.pack(side='bottom', fill='x')
+    canvas.pack(side='left', fill=ctk.BOTH, expand=True)
+    dropdown_frame = ctk.CTkFrame(canvas)
+    dropdown_frame.pack(side="top", expand=True, fill = ctk.BOTH)
+    table_list = get_tables()
+    table_dropdown = ctk.CTkComboBox(dropdown_frame, values=table_list)
+    ctid_dropdown = ctk.CTkComboBox(dropdown_frame, values=get_block_number(table_dropdown.get()))
+    submit_button = ctk.CTkButton(dropdown_frame, text="Submit")
+    quit_button = ctk.CTkButton(dropdown_frame, text="Quit", command=return_to_main)
+    ctid_dropdown.pack(tk.LEFT, )
+    table_frame = ctk.CTkFrame(canvas)
+    canvas_window = canvas.create_window((0, 0), window=table_frame, anchor='nw')
+
+    def configure_canvas(event):
+        canvas.itemconfig(canvas_window, width=event.width)
+
+    canvas.bind("<Configure>", configure_canvas)
+
+    rows, cols = 10, 10  # Example size, adjust as needed
+    for r in range(rows):
+        for c in range(cols):
+            entry = ctk.CTkEntry(table_frame, width=20)
+            entry.grid(row=r, column=c, sticky='nsew')
+            # entry.insert(0, f'Row {r} Col {c}')
+            entry.insert(0, "Send Help")
+
+    for i in range(cols):
+        table_frame.grid_columnconfigure(i, weight=1)
+    for i in range(rows):
+        table_frame.grid_rowconfigure(i, weight=1)
+
+    table_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
 
 def create_block_visualization():
     for widget in window.winfo_children():
@@ -766,8 +817,6 @@ def create_block_visualization():
     # Parsing readinfo.json to get the reads and hits for each type of block
     with open("readinfo.json", 'r') as file:
         data = json.load(file)
-    with open("ctid_results.json", 'r') as ctid_file:
-        ctid_data = json.load(ctid_file)
     reads_dict = {}
     for item in data[:-1]:
         key = item[2]
@@ -799,6 +848,47 @@ def create_block_visualization():
     fig = get_pie_chart(table_list[1], reads_dict)
     ctid_list = []
 
+    def update_heatmap(choice, block_grid):
+        with open("ctid_results.json", 'r') as ctid_file:
+            ctid_data = json.load(ctid_file)
+        block_size = 100
+        grid_size = 6
+        block_grid.delete(all)
+        #Heatmap Code Starts Here
+        max_blocks = 36
+        num_blocks = len(ctid_data)
+        if num_blocks > max_blocks:
+            n = math.ceil(num_blocks / max_blocks)
+            print(f"n: {n}")
+            aggregated_data = {}
+            for i in range(0, num_blocks, n):
+                block_ids = list(ctid_data.keys())[i:i+n]
+                total_reads = sum(ctid_data[ctid] for ctid in block_ids if ctid in ctid_data)
+                aggregated_data[f"{block_ids[0]}-{block_ids[-1]}"] = total_reads
+            ctid_data = aggregated_data
+        print(num_blocks)
+        for ctid, reads in ctid_data.items():
+            index = list(ctid_data.keys()).index(ctid)
+            x0 = (index % grid_size) * block_size
+            y0 = (index // grid_size) * block_size
+            x1 = x0 + block_size
+            y1 = y0 + block_size
+            color = get_hue(reads)
+            rect = block_grid.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
+            text_position = (x0 + block_size / 2, y0 + block_size / 2)  # Center of the block
+            if(reads < 15):
+                text_color = "black"
+            else:
+                text_color = "white"
+            text = block_grid.create_text(text_position, text=f"CTID\n{ctid}\nReads: {reads}", fill=text_color, font=("Arial", 10)) 
+    
+    info_frame = ctk.CTkFrame(window, bg_color="white",fg_color="white")
+    block_grid = ctk.CTkCanvas(info_frame, width=600, height=600)
+    block_grid_label = ctk.CTkLabel(info_frame, text="Block Reads Heatmap", font=("Arial",16))
+    block_grid_label.pack()
+    block_grid.pack()
+    update_heatmap(table_list[1], block_grid)
+    
     def on_table_select(choice):
         #When you select the dropdown on the left, this is the logic that updates the plot that is drawn and the dropdown on the right for each block id
         nonlocal pie_chart_grid
@@ -808,6 +898,7 @@ def create_block_visualization():
         pie_chart_grid.draw()
         ctid_list = get_block_number(choice)
         print(ctid_list)
+        update_heatmap(choice, block_grid)
 
     table_dropdown = ctk.CTkComboBox(dropdown_frame, variable=table_var, values=table_list, bg_color="white", command=on_table_select)
     dropdown_label = ctk.CTkLabel(dropdown_frame, text="Select a Table : ", font=("Arial", 14))
@@ -818,46 +909,9 @@ def create_block_visualization():
     table_dropdown.pack(side=ctk.LEFT)
     quit_button.pack(side=ctk.RIGHT)
     pie_chart_grid.get_tk_widget().pack()
-
-    info_frame = ctk.CTkFrame(window, bg_color="white",fg_color="white")
     info_frame.pack(side=ctk.RIGHT, fill=ctk.BOTH, expand=True)    
+
     
-    block_grid = ctk.CTkCanvas(info_frame, width=600, height=600)
-    block_grid_label = ctk.CTkLabel(info_frame, text="Block Reads Heatmap", font=("Arial",16))
-    block_grid_label.pack()
-    block_grid.pack()
-
-    max_blocks = 36
-    num_blocks = len(ctid_data)
-    if num_blocks > max_blocks:
-        n = math.ceil(num_blocks / max_blocks)
-        print(f"n: {n}")
-        aggregated_data = {}
-        for i in range(0, num_blocks, n):
-            block_ids = list(ctid_data.keys())[i:i+n]
-            total_reads = sum(ctid_data[ctid] for ctid in block_ids if ctid in ctid_data)
-            aggregated_data[f"{block_ids[0]}-{block_ids[-1]}"] = total_reads
-        ctid_data = aggregated_data
-    print(num_blocks)
-
-    block_size = 100
-    grid_size = 6
-    for ctid, reads in ctid_data.items():
-        index = list(ctid_data.keys()).index(ctid)
-        x0 = (index % grid_size) * block_size
-        y0 = (index // grid_size) * block_size
-        x1 = x0 + block_size
-        y1 = y0 + block_size
-        color = get_hue(reads)
-        rect = block_grid.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
-        text_position = (x0 + block_size / 2, y0 + block_size / 2)  # Center of the block
-        if(reads < 15):
-            text_color = "black"
-        else:
-            text_color = "white"
-        text = block_grid.create_text(text_position, text=f"CTID\n{ctid}\nReads: {reads}", fill=text_color, font=("Arial", 10)) 
-
-
 def frontend():
     logging.basicConfig(format='%(levelname)s: Line %(lineno)d - %(message)s', level=logging.INFO)
     createLoginWindow()
