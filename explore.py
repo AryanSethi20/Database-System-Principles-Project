@@ -225,5 +225,5 @@ def backend():
     logging.basicConfig(level=logging.INFO)
     app.run()
 
-if __name__ == '__main__':
-    app.run()
+# if __name__ == '__main__':
+#     app.run()
