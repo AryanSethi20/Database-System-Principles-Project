@@ -1,4 +1,4 @@
-from explore import  backend
+from explore import backend
 from interface import frontend
 from multiprocessing import Process
 

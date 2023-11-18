@@ -86,7 +86,7 @@ def login(port_entry, host_entry, database_entry, user_entry, password_entry, er
         response = requests.post("http://127.0.0.1:5000/connection", json=data)
         token = response.json().get('token')
 
-        if response.status_code==201:
+        if response.status_code==200:
             login_window.destroy()
             createQueryWindow()
         else:
@@ -203,7 +203,7 @@ def submitQuery():
                 result = response.json()
                 queryOutput = result.get('results')
                 logging.debug(f"Query Output: {queryOutput}")
-                readOutput = result.get('statistics')
+                readOutput = result.get('statistics') + result.get('count')
                 logging.debug(f"Stats Output: {readOutput}")
 
                 # Write the results of the request in a file for faster processing
