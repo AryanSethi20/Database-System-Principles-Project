@@ -756,11 +756,13 @@ def get_pie_chart(table,reads_dict):
     subplot.pie(sizes, labels=labels, autopct="%1.0f%%")    
     return fig
     
-def get_block_number(table):
+def get_block_number(count):
     # This is where I get the number of blocks in a relation to populate the dropdown on the right side of the block visualization
-    # FIXME: Needs to return a list for it to be accepted by the tkinter dropdown
-    return ["1","2","3","4","5","6","7","8","9","10"]
-
+    if(count == 1):
+        return ["1"]
+    print("get block number")
+    print([str(i) for i in range(1, count)])
+    return [str(i) for i in range(1, count)]
 
 def create_ctid_table():
     for widget in window.winfo_children():
@@ -769,8 +771,8 @@ def create_ctid_table():
     with open("readinfo.json", 'r') as file:
         data = json.load(file)
     reads_dict = {}
-    for item in data:
-        key = item[2]
+    for item in data[:-1]:
+        key = item[3]
         values = {
             "heap_blks_read": 0 if item[3] is None else item[3],
             "heap_blks_hit": 0 if item[4] is None else item[4],
@@ -787,33 +789,75 @@ def create_ctid_table():
         else:
             reads_dict[key] = values
     table_list = list(reads_dict.keys())
-    #print(reads_dict)
+    
     print(table_list)
-    ctid_count = []
+    ctid_count = {}
     for table in table_list:
-        ctid_count.append(data[-1][table])
+        ctid_count[table] = (data[-1][table])
     print(ctid_count)
 
     container = ctk.CTkFrame(window, bg_color="white")
     container.pack(fill=ctk.BOTH, expand=True)
-
-    canvas = tk.Canvas(container)
+    canvas = tk.Canvas(container, bg="white")
+    dropdown_frame = ctk.CTkFrame(container)
+    dropdown_frame.pack(side=tk.TOP, fill = ctk.X)
     scroll_y = ctk.CTkScrollbar(container, orientation="vertical", command=canvas.yview)
     scroll_x = ctk.CTkScrollbar(container, orientation='horizontal', command=canvas.xview)
     canvas.configure(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
     scroll_y.pack(side='right', fill='y')
     scroll_x.pack(side='bottom', fill='x')
     canvas.pack(side='left', fill=ctk.BOTH, expand=True)
-    dropdown_frame = ctk.CTkFrame(canvas)
-    dropdown_frame.pack(side="top", expand=True, fill = ctk.BOTH)
-    table_dropdown = ctk.CTkComboBox(dropdown_frame, values=table_list)
-    ctid_dropdown = ctk.CTkComboBox(dropdown_frame, values=get_block_number(table_dropdown.get()))
-    submit_button = ctk.CTkButton(dropdown_frame, text="Submit")
+    
+    def populate_table():
+        table_name = table_dropdown.get()
+        ctid_value = ctid_dropdown.get()
+        print(f"table name: {table_name}, ctid value: {ctid_value}")
+        #TODO: call endpoint here, then use entry.insert() to control what values are being input into the cell
+        for widget in table_frame.winfo_children():
+            widget.destroy()
+        read = True
+        # TODO: change this based on the output from the API call
+        rows, cols = 10, 10
+        for r in range(rows):
+            for c in range(cols):
+                #TODO - change this condition to if the block was read
+                if read:
+                    fg_color = "e7ffce"
+                fg_color = "white"
+                entry = ctk.CTkEntry(table_frame, width=20, fg_color=fg_color)
+                entry.grid(row=r, column=c, sticky='nsew')
+                #TODO: change this based on the actual data
+                entry.insert(0, "Data") 
+
+        # Configure weight for columns and rows
+        for i in range(cols):
+            table_frame.grid_columnconfigure(i, weight=1)
+        for i in range(rows):
+            table_frame.grid_rowconfigure(i, weight=1)
+
+        table_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+    
+    def update_ctid_dropdown(choice):
+        print(f"choice: {choice}")
+        print(f"ctid_count[choice]: {ctid_count[choice]}")
+        ctid_dropdown.configure(state=tk.NORMAL)
+        ctid_dropdown.configure(require_redraw=True, values=get_block_number(ctid_count[choice]))
+    
+    def enable_submit(choice):
+        submit_button.configure(state=tk.NORMAL, require_redraw=True)
+
+    table_dropdown_label = ctk.CTkLabel(dropdown_frame, text="Select a Table")
+    table_dropdown = ctk.CTkComboBox(dropdown_frame, values=table_list, command=update_ctid_dropdown)
+    ctid_dropdown_label = ctk.CTkLabel(dropdown_frame, text="Select a CTID")
+    ctid_dropdown = ctk.CTkComboBox(dropdown_frame, state=tk.DISABLED, command=enable_submit)
+    submit_button = ctk.CTkButton(dropdown_frame, text="Submit", command=populate_table, state=tk.DISABLED)
     quit_button = ctk.CTkButton(dropdown_frame, text="Quit", command=return_to_main)
-    table_dropdown.pack(tk.LEFT)
-    ctid_dropdown.pack(tk.LEFT)
-    submit_button.pack(tk.RIGHT)
-    quit_button.pack(tk.RIGHT)
+    table_dropdown_label.pack(side=tk.LEFT)
+    table_dropdown.pack(side=tk.LEFT)
+    ctid_dropdown_label.pack(side=tk.LEFT)
+    ctid_dropdown.pack(side=tk.LEFT)
+    quit_button.pack(side=tk.RIGHT)
+    submit_button.pack(side=tk.RIGHT)
     table_frame = ctk.CTkFrame(canvas)
     canvas_window = canvas.create_window((0, 0), window=table_frame, anchor='nw')
 
@@ -821,21 +865,21 @@ def create_ctid_table():
         canvas.itemconfig(canvas_window, width=event.width)
 
     canvas.bind("<Configure>", configure_canvas)
+    # # Table drawing starts here
+    # rows, cols = 10, 10  
+    # for r in range(rows):
+    #     for c in range(cols):
+    #         entry = ctk.CTkEntry(table_frame, width=20)
+    #         entry.grid(row=r, column=c, sticky='nsew')
+    #         # entry.insert(0, f'Row {r} Col {c}')
+    #         entry.insert(0, "Send Help")
 
-    rows, cols = 10, 10  # Example size, adjust as needed
-    for r in range(rows):
-        for c in range(cols):
-            entry = ctk.CTkEntry(table_frame, width=20)
-            entry.grid(row=r, column=c, sticky='nsew')
-            # entry.insert(0, f'Row {r} Col {c}')
-            entry.insert(0, "Send Help")
+    # for i in range(cols):
+    #     table_frame.grid_columnconfigure(i, weight=1)
+    # for i in range(rows):
+    #     table_frame.grid_rowconfigure(i, weight=1)
 
-    for i in range(cols):
-        table_frame.grid_columnconfigure(i, weight=1)
-    for i in range(rows):
-        table_frame.grid_rowconfigure(i, weight=1)
-
-    table_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+    # table_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
 
 def create_block_visualization():
@@ -846,7 +890,7 @@ def create_block_visualization():
         data = json.load(file)
     reads_dict = {}
     for item in data[:-1]:
-        key = item[2]
+        key = item[3]
         values = {
             "heap_blks_read": 0 if item[3] is None else item[3],
             "heap_blks_hit": 0 if item[4] is None else item[4],
