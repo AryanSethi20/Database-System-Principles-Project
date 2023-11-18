@@ -821,20 +821,16 @@ def create_block_visualization():
     info_frame = ctk.CTkFrame(window, bg_color="white",fg_color="white")
     info_frame.pack(side=ctk.RIGHT, fill=ctk.BOTH, expand=True)    
     
-    block_grid = ctk.CTkCanvas(info_frame, width=500, height=500)
+    block_grid = ctk.CTkCanvas(info_frame, width=600, height=600)
     block_grid_label = ctk.CTkLabel(info_frame, text="Block Reads Heatmap", font=("Arial",16))
     block_grid_label.pack()
     block_grid.pack()
 
-    max_blocks = 100
+    max_blocks = 36
     num_blocks = len(ctid_data)
     if num_blocks > max_blocks:
-        fixed_heatmap_size = 100  # Example size
-        n = math.ceil(num_blocks / fixed_heatmap_size)
-        # Summing reads of every 'n' blocks
-        #n = math.ceil(math.sqrt(num_blocks / max_blocks) * math.log(num_blocks))
+        n = math.ceil(num_blocks / max_blocks)
         print(f"n: {n}")
-        #n = math.ceil(num_blocks / max_blocks)
         aggregated_data = {}
         for i in range(0, num_blocks, n):
             block_ids = list(ctid_data.keys())[i:i+n]
@@ -842,10 +838,9 @@ def create_block_visualization():
             aggregated_data[f"{block_ids[0]}-{block_ids[-1]}"] = total_reads
         ctid_data = aggregated_data
     print(num_blocks)
-    grid_size = int(math.sqrt(num_blocks)) + 1
-    print(f"grid_size: {grid_size}")
 
-    block_size = 25
+    block_size = 100
+    grid_size = 6
     for ctid, reads in ctid_data.items():
         index = list(ctid_data.keys()).index(ctid)
         x0 = (index % grid_size) * block_size
@@ -859,7 +854,7 @@ def create_block_visualization():
             text_color = "black"
         else:
             text_color = "white"
-        text = block_grid.create_text(text_position, text=f"CTID {ctid}\nReads: {reads}", fill=text_color) 
+        text = block_grid.create_text(text_position, text=f"CTID\n{ctid}\nReads: {reads}", fill=text_color, font=("Arial", 10)) 
 
 
 def frontend():
