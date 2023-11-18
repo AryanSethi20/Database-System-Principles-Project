@@ -1,11 +1,11 @@
 [
   {
-    "Execution Time": 0.541,
+    "Execution Time": 0.063,
     "Plan": {
       "Actual Loops": 1,
       "Actual Rows": 25,
-      "Actual Startup Time": 0.023,
-      "Actual Total Time": 0.026,
+      "Actual Startup Time": 0.04,
+      "Actual Total Time": 0.045,
       "Alias": "nation",
       "Async Capable": false,
       "Local Dirtied Blocks": 0,
@@ -39,13 +39,13 @@
       "Local Read Blocks": 0,
       "Local Written Blocks": 0,
       "Shared Dirtied Blocks": 0,
-      "Shared Hit Blocks": 65,
-      "Shared Read Blocks": 0,
+      "Shared Hit Blocks": 23,
+      "Shared Read Blocks": 1,
       "Shared Written Blocks": 0,
       "Temp Read Blocks": 0,
       "Temp Written Blocks": 0
     },
-    "Planning Time": 3.219,
+    "Planning Time": 1.075,
     "Triggers": []
   }
 ]
