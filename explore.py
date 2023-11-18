@@ -131,10 +131,9 @@ def connect_to_db():
             port=port,
         )
 
-        # If the connection is successful, create a token
         token = jwt.encode({
             'user': username,
-            'exp': datetime.utcnow() + timedelta(hours=1)  # token expiry set to 1 hour
+            'exp': datetime.utcnow() + timedelta(hours=1)
         }, SECRET_KEY, algorithm='HS256')
         
         CONNECTIONS[token] = conn
@@ -149,6 +148,8 @@ def connect_to_db():
 def tuples_in_blocks():
     token = request.headers.get('Authorization').split(" ")[0]
     try:
+        if token not in CONNECTIONS:
+            raise Exception("Invalid or missing authorization")
         data = request.get_json()
         table = data.get('table')
         block = data.get('block')
@@ -168,6 +169,8 @@ def get_blocks_accessed():
     '''
     token = request.headers.get('Authorization').split(" ")[0]
     try:
+        if token not in CONNECTIONS:
+            raise Exception("Invalid or missing authorization")
         data = request.get_json()
         table = data.get('table')
         results = execute_sql_query(CONNECTIONS[token], extract_scan_info(table))
