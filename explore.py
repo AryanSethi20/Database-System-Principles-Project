@@ -60,7 +60,7 @@ def run_explain_query(conn, query, explain="BUFFERS ON, ANALYZE ON, COSTS ON, VE
     finally:
         cur.close()
    
-def extract_scan_info(table):
+def extract_scan_info(table, block=-1):
     with open('queryplan.json', 'r') as file:
         data = json.load(file)
         plan = data[0]['Plan']
@@ -78,10 +78,17 @@ def extract_scan_info(table):
 
     traverse_plans(plan)
     relation, filter = scan_info[-1][0], scan_info[-1][1]
-    if filter != "N/A":
-        query = f"WITH all_blocks AS ( SELECT DISTINCT (ctid::text::point)[0] AS block_id FROM {relation} ) SELECT ab.block_id, COALESCE(COUNT(*), 0) AS tuple_count FROM all_blocks ab LEFT JOIN {relation} ON ab.block_id = ({relation}.ctid::text::point)[0] AND {filter} GROUP BY ab.block_id ORDER BY ab.block_id;"
+    if block==-1:
+        if filter != "N/A":
+            query = f"WITH all_blocks AS ( SELECT DISTINCT (ctid::text::point)[0] AS block_id FROM {relation} ) SELECT ab.block_id, COALESCE(COUNT(*), 0) AS tuple_count FROM all_blocks ab LEFT JOIN {relation} ON ab.block_id = ({relation}.ctid::text::point)[0] AND {filter} GROUP BY ab.block_id ORDER BY ab.block_id;"
+        else:
+            query = f"WITH all_blocks AS ( SELECT DISTINCT (ctid::text::point)[0] AS block_id FROM {relation} ) SELECT ab.block_id, COALESCE(COUNT(*), 0) AS tuple_count FROM all_blocks ab LEFT JOIN {relation} ON ab.block_id = ({relation}.ctid::text::point)[0] GROUP BY ab.block_id ORDER BY ab.block_id;"
     else:
-        query = f"WITH all_blocks AS ( SELECT DISTINCT (ctid::text::point)[0] AS block_id FROM {relation} ) SELECT ab.block_id, COALESCE(COUNT(*), 0) AS tuple_count FROM all_blocks ab LEFT JOIN {relation} ON ab.block_id = ({relation}.ctid::text::point)[0] GROUP BY ab.block_id ORDER BY ab.block_id;"
+        if filter != "N/A":
+            query = f"SELECT * FROM {relation} WHERE {filter} AND (ctid::text::point)[0] = {block}"
+        else:
+            query = f"SELECT * FROM {relation} WHERE (ctid::text::point)[0] = {block}"
+
     return query
 
 
@@ -130,7 +137,22 @@ def connect_to_db():
         return {"error": "Database connection failed. Try again!"}, 400
 
 
-@app.route('/block', methods=['POST'])
+@app.route('/blocks', methods=['POST'])
+def tuples_in_blocks():
+    token = request.headers.get('Authorization').split(" ")[0]
+    try:
+        data = request.get_json()
+        table = data.get('table')
+        block = data.get('block')
+        all_tuples = execute_sql_query(CONNECTIONS[token], f"SELECT * FROM {table} WHERE (ctid::text::point)[0] = {block}")
+        accessed_tuples = execute_sql_query(CONNECTIONS[token], extract_scan_info(table, block))
+
+        return {"accessed": accessed_tuples, "all": all_tuples}, 200
+    except Exception as e:
+        logging.error(f"Error while trying to access block level tuples: {e}")
+        return {"error": str(e)}, 400
+
+@app.route('/visuals', methods=['POST'])
 def get_blocks_accessed():
     '''
     This function is an endpoint which helps visualise the blocks. It gets a table and returns the tuples accessed from that particular block
@@ -142,7 +164,7 @@ def get_blocks_accessed():
         results = execute_sql_query(CONNECTIONS[token], extract_scan_info(table))
         results = {int(key): value for key,value in results}
         
-        return {"Results": results}, 200
+        return results, 200
     except Exception as e:
         return {"error": str(e)}, 400
 
@@ -190,5 +212,5 @@ def backend():
     logging.basicConfig(level=logging.INFO)
     app.run()
 
-if __name__ == '__main__':
-    app.run()
+# if __name__ == '__main__':
+#     app.run()

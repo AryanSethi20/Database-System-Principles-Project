@@ -6,4 +6,4 @@ if __name__ == '__main__':
     flask_process = Process(target=backend)
     flask_process.start()
     frontend()
-    flask_process.close()
+    flask_process.kill()

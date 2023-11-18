@@ -769,7 +769,7 @@ def create_block_visualization():
     with open("ctid_results.json", 'r') as ctid_file:
         ctid_data = json.load(ctid_file)
     reads_dict = {}
-    for item in data:
+    for item in data[:-1]:
         key = item[2]
         values = {
             "heap_blks_read": 0 if item[3] is None else item[3],
