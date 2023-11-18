@@ -28,7 +28,10 @@ READ_INFO_JSON = "readinfo.json"
 ctk.set_appearance_mode('light')
 
 def createLoginWindow():
-
+    '''
+    Creates a login window to capture user credentials.
+    First window called in our program execution loop.
+    '''
     login_window = ctk.CTk()
     login_window.title("Login to PostgreSQL")
     login_window.geometry('320x480')
@@ -74,6 +77,10 @@ def createLoginWindow():
     login_window.mainloop()
 
 def login(port_entry, host_entry, database_entry, user_entry, password_entry, error_label, login_window):
+    '''
+    Function that interacts with our flask backend to validate a user's postgres credentials.
+    Creates a user token that is used for the rest of the application. 
+    '''
     global token
     
     port = port_entry.get()
@@ -105,6 +112,10 @@ def return_to_main():
         createQueryWindow(recall=True)
 
 def createQueryWindow(recall = False):
+    '''
+    Creates the main window for our application where users can submit SQL queries and be redirected to view their results.
+    Recall parameter controls whether a new window is initated when the function is called.
+    '''
     global window
     global user_query
     global qep_panel_text
@@ -174,6 +185,10 @@ def createQueryWindow(recall = False):
         window.mainloop() 
 
 def submitQuery():
+    '''
+    Submits user query to the postgresSQL instance and saves the program output to queryplan.json and readinfo.json for further use by the application.
+    Contains error handling for incorrect queries.
+    '''
     global restored_query
     query = user_query.get(1.0, 'end-1c')
     qep_panel_text.configure(state='normal')
@@ -262,6 +277,10 @@ def deleteQuery():
     deleteQEPAnnotation()
 
 def createQEPTree():
+    '''
+    Main function loop called for the visualization of the query tree based on the user's input
+
+    '''
     for widget in window.winfo_children():
         widget.destroy()
     
@@ -333,6 +352,8 @@ def createQEPTree():
             return
         
     def create_top_down_tree(node, parent):
+        #Generate a graph structure based on the QEP execution path
+        #Used for plotting the dependencies between nodes
         graph = nx.DiGraph()
 
         for i, node_type in enumerate(node):
@@ -346,13 +367,16 @@ def createQEPTree():
 
 
     def visualize_tree(graph):
+        '''
+        Generates a matplotlib plot from the parsed graph structure.
+        Adds color coding and a toolbar for interactive zooming and panning of the graph within the application.
+        '''
         global fig
         fig, ax = plt.subplots()
         root_node = [node for node, in_degree in graph.in_degree() if in_degree == 0]
         pos = graphviz_layout(graph, prog='dot', root=root_node)
         graph = graph.reverse(copy=True)
-        #FIXME: this works but it's a bit bugged still
-        # For each node, draw a larger box to fit the text
+        # Draw a box for the text of each node
         max_node_size = 0
         for node, (x, y) in pos.items():
             label = graph.nodes[node]['label']
@@ -363,7 +387,6 @@ def createQEPTree():
         nx.draw_networkx_edges(graph, pos, node_size=max_node_size)
         for node, (x, y) in pos.items():
             label = graph.nodes[node]['label']
-            #TODO: write a function for this code if you have time later
             node_color = "grey"
             if 'Nested Loop Join' in label:
                 node_color = "#FFDD32"
@@ -387,7 +410,7 @@ def createQEPTree():
                 node_color = "#DE2D26"
             size = len(label) * 0.3 + 50
             nx.draw_networkx_nodes(graph, pos, [node], node_size=size, node_color='none')
-            # Draw the label manually to ensure it's placed correctly
+            # Manual drawing of label is done to ensure that the text is correctly generated
             plt.text(x, y, label, fontsize=8, ha='center', va='center', alpha=0.75, 
                     bbox=dict(boxstyle="round,pad=0.3", facecolor=node_color, edgecolor='black'))
         plt.axis('off')
@@ -395,12 +418,14 @@ def createQEPTree():
         canvas = FigureCanvasTkAgg(fig, master=plotFrame)
         toolbar_frame = ctk.CTkFrame(master=plotFrame)
         toolbar_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        # Add navigation bar for zooming and panning
         toolbar = NavigationToolbar2Tk(canvas, toolbar_frame, pack_toolbar=False)
         toolbar.update()
         canvas_widget = canvas.get_tk_widget()
         canvas_widget.pack(fill=tk.BOTH, expand=True)
         toolbar.pack(side=tk.TOP, fill=tk.X)
         #plt.show()
+        # Add a quit button to return to main screen
         button_quit = ctk.CTkButton(master=toolbar_frame, text="Quit", command=return_to_main)
         button_quit.pack(side=tk.BOTTOM, fill=tk.X)
     getQEPforVisualization(QUERY_PLAN_JSON)
@@ -422,6 +447,10 @@ def deleteQEPAnnotation():
     analysisList.clear()
 
 def getQEP(filename):
+    '''
+    Parse the EXPLAIN output provided by postgres into a python dictionary with the necessary information for our application.
+    Uses recursive calls with the file structure
+    '''
     with open(f"{filename}") as file:
         data = json.load(file)
         plan = data[0]["Plan"]
@@ -450,6 +479,10 @@ def iterateOverQEP(queryplan, parentNo):
         return
         
 def getQEPAnnotation():
+    '''
+    Annotates the Query Execution Plan based on JSON nodes to output a human-readable format.
+    Used for natural language analysis of the QEP.
+    '''
     tables = []
     tableCount = 1
     count = 1
@@ -457,7 +490,7 @@ def getQEPAnnotation():
     i = len(operatorSeq) - 1
     while i >= 0:
         nodeType = operatorSeq[i]
-        
+        # Based on the node type, capture different outputs and write more information
         if nodeType == 'Aggregate':
             if info[i]['Strategy'] == "Hashed":
                 steps += f'Step {count}: Aggregate performed to hash rows of {tables[-1]} based on key {info[i]["Group Key"]}, and resulting rows will be returned.\n'
@@ -481,7 +514,6 @@ def getQEPAnnotation():
         elif nodeType == 'CTE_Scan':
             steps += f'Step {count}: CTE_Scan performed on relation'
             tables.append(info[i]["Relation Name"])
-            # If index cond exist
             if "Index Cond" in info[i]:
                 steps += f' with condition(s): {info[i]["Index Cond"]}.\n'
 
@@ -504,7 +536,6 @@ def getQEPAnnotation():
         elif nodeType == 'Index Only Scan':
             steps += f'Step {count}: Index Only scan performed on \'{info[i]["Index Name"]}\'as data could be access from indexes directly'
             tables.append(info[i]["Relation Name"])
-            # If index cond exist
             if "Index Cond" in info[i]:
                 steps += f' under condition(s): {info[i]["Index Cond"]}'
             if 'Filter' in info[i]:
@@ -516,7 +547,6 @@ def getQEPAnnotation():
             if 'Filter' in info[i]:
                 steps+= f' {info[i]["Filter"]}'
             tables.append(info[i]["Relation Name"])
-            # If index cond exist
             if "Index Cond" in info[i]:
                 steps += f' {info[i]["Index Cond"]}'
             steps += '.\n'
@@ -575,6 +605,11 @@ def getQEPAnnotation():
     return steps
 
 def QEPAnalysis():
+    '''
+    Performs cost analysis of the query based on the EXPLAIN output from postgres.
+    Captures information such as planning time, execution time, most and least expensive step.
+    Used for natural language output
+    '''
     analysis = 'Time Taken For Query Execution:\n'
     analysis += f"Execution Time = {executionTime} ms\n"
     analysis += f"Planning Time = {planningTime} ms\n"
@@ -585,7 +620,6 @@ def QEPAnalysis():
     least_expensive_step = results['total_plans'] - results['least_expensive'][2]
 
     if results['most_expensive'] is not None and results['least_expensive'] is not None:
-        # Additional query analysis
         analysis += f"\nThis query has a total of {results['total_plans']} steps: ["
         for node_type, count in results['node_counts'].items():
             analysis += f"{count} {node_type}, "
@@ -599,13 +633,11 @@ def QEPAnalysis():
         analysis += f"Step {least_expensive_step} : {results['least_expensive'][0]} with "
         analysis += f"actual total time of {results['least_expensive'][1]}ms."
 
-        # Print the total difference
+        
         analysis += f"\nTotal difference between estimated and actual time taken was {results['total_difference']}ms"
 
-        # Display the results
         analysis = analysis.rstrip(', ')
 
-        # Average actual total time for each node type
         analysis += "\nAverage actual total time: "
         for node_type, average_time in results['average_actual_time'].items():
             analysis += f"{average_time}ms for {node_type}, "
@@ -616,7 +648,6 @@ def QEPAnalysis():
         analysis += f"\nTotal Shared Dirtied Blocks: {buffers['Shared Dirtied Blocks']}"
         analysis += f"\nTotal Shared Written Blocks: {buffers['Shared Written Blocks']}"
 
-    #analysisList.append(analysis)    
     return analysis
 
 def analyze_execution_plan(json_file_path):
@@ -637,7 +668,7 @@ def analyze_execution_plan(json_file_path):
     node_counts = {}
     total_actual_time = {}
 
-    # Function to traverse the nested structure and extract information
+    # Traverse the nested structure and extract information
     def process_plan(plan, cost):
         nonlocal mostexp, leastexp, totaldiff, total_plans, node_counts, total_actual_time
 
@@ -659,15 +690,15 @@ def analyze_execution_plan(json_file_path):
         # Update total actual time for each node type
         total_actual_time[node_type] = total_actual_time.get(node_type, 0) + actual_total_time
 
-        # The most expensive step
+        # Update the most expensive step
         if mostexp is None or actual_total_time > mostexp[1]:
             mostexp = (node_type, actual_total_time, cost)
 
-        # The least expensive step
+        # Update the least expensive step
         if leastexp is None or actual_total_time < leastexp[1]:
             leastexp = (node_type, actual_total_time, cost)
 
-        # Difference in estimated total time and actual total time
+        # Find the difference in estimated total time and actual total time
         diff = round(estimated_total_time - actual_total_time, 3)
 
         # Calculating the total difference
@@ -721,30 +752,15 @@ def get_hue(reads):
     intensity = min(255, reads * 5)
     return f"#ff{format(255-intensity, '02x')}{format(255-intensity, '02x')}"
 
-def fetch_data_for_ctid(ctid):
-    # Replace this with your actual backend function call
-    # For example: return backend_function(ctid)
-    return [("1", "value1"), ("2", "value2")]  # Dummy data
-
-def update_grid(ctid, scrollable_frame):
-    # This is the function that actually updates the new tuples that are read
-    # Clear existing grid
-    for widget in scrollable_frame.winfo_children():
-        widget.destroy()
-    print(f"Fetching data for ctid {ctid}")
-    # Fetch new data
-    data = fetch_data_for_ctid(ctid)
-    print(f"Data Fetched: {data}")
-    # Populate the grid with new data
-    # TODO - rewrite this to work with variable number of columns for each data set
-    for row_index, (tuple_value, value) in enumerate(data):
-        ctk.CTkLabel(scrollable_frame, text=tuple_value, corner_radius=0, fg_color="transparent", text_color="white", font=("Arial", 12), anchor="w",justify="left", padx=5, pady=5).grid(row=row_index, column=0)
-        ctk.CTkLabel(scrollable_frame, text=value, corner_radius=0, fg_color="transparent", text_color="white", font=("Arial", 12), anchor="w",justify="left", padx=5, pady=5).grid(row=row_index, column=1)
         
 def get_pie_chart(table,reads_dict):
+    '''
+    Generates a pie chart based on the reads information output by postgresSQL.
+    '''
     print(table)
     sizes = []
     labels = []
+    # Capture reads with values > 0 to display in the chart
     read_information = {i:reads_dict[table][i] for i in reads_dict[table].keys() if reads_dict[table][i]>0}
     print(read_information)
     for key in read_information:
@@ -771,6 +787,11 @@ def get_block_number(count):
     return [str(i) for i in range(1, count)]
 
 def create_ctid_table():
+    '''
+    Main function used for generating the CTID table.
+    Allows users to choose a table from their query and the page.
+    Displays which tuples were accessed by their query by shading the cell green.
+    '''
     for widget in window.winfo_children():
         widget.destroy()
 
@@ -815,6 +836,10 @@ def create_ctid_table():
     canvas.pack(side='left', fill=ctk.BOTH, expand=True)
     
     def populate_table():
+        '''
+        Inserts values into the table based on the user's selected table name and CTID.
+        Highlights cells green if they have been read by the query they have run.
+        '''
         try:
             for widget in table_frame.winfo_children():
                 widget.destroy()
@@ -833,26 +858,22 @@ def create_ctid_table():
             logging.debug(f"Column Names: {col_names}")
             tuples = response.json().get('accessed')
             logging.debug(f"Tuples: {tuples}")
-            #TODO: call endpoint here, then use entry.insert() to control what values are being input into the cell
-            # TODO: change this based on the output from the API call
             rows, cols = len(tuples), len(col_names)
 
             for c in range(len(col_names)):
                 entry = ctk.CTkTextbox(table_frame, width=250, wrap="word",border_spacing=0)
                 entry.grid(row=0, column=c)
-                #TODO: change this based on the actual data
                 entry.insert("0.0",col_names[c]) 
 
             for r in range(rows):
                 for c in range(cols):
-                    #TODO - change this condition to if the block was read
+                    # If the block was read by the query, highlight it green
                     if tuples[r][-1] == "Yes":
                         fg_color = "#e7ffce"
                     else:
                         fg_color = "white"
                     entry = ctk.CTkTextbox(table_frame, width=250, fg_color=fg_color, wrap="word",border_spacing=0)
                     entry.grid(row=r+1, column=c)
-                    #TODO: change this based on the actual data
                     entry.insert("0.0",tuples[r][c+1])
             
             for i in range(cols):
@@ -893,21 +914,6 @@ def create_ctid_table():
         canvas.itemconfig(canvas_window, width=event.width)
 
     canvas.bind("<Configure>", configure_canvas)
-    # # Table drawing starts here
-    # rows, cols = 10, 10  
-    # for r in range(rows):
-    #     for c in range(cols):
-    #         entry = ctk.CTkEntry(table_frame, width=20)
-    #         entry.grid(row=r, column=c, sticky='nsew')
-    #         # entry.insert(0, f'Row {r} Col {c}')
-    #         entry.insert(0, "Send Help")
-
-    # for i in range(cols):
-    #     table_frame.grid_columnconfigure(i, weight=1)
-    # for i in range(rows):
-    #     table_frame.grid_rowconfigure(i, weight=1)
-
-    # table_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
 
 def create_block_visualization():
@@ -1031,5 +1037,3 @@ def frontend():
     createLoginWindow()
     return
 
-# TODO - comment this out when submitting final code
-# create_block_visualization()
