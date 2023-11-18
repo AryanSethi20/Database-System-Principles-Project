@@ -14,6 +14,7 @@ import customtkinter as ctk
 import tkinter as tk
 import requests
 import logging
+import math
 
 operatorSeq = []
 parents = []
@@ -97,6 +98,11 @@ def login(port_entry, host_entry, database_entry, user_entry, password_entry, er
 def on_close():
     window.destroy()
     quit()
+
+def return_to_main():
+        for widget in window.winfo_children():
+            widget.destroy()
+        createQueryWindow(recall=True)
 
 def createQueryWindow(recall = False):
     global window
@@ -336,10 +342,6 @@ def createQEPTree():
 
         return graph
 
-    def return_to_main():
-        for widget in window.winfo_children():
-            widget.destroy()
-        createQueryWindow(recall=True)
 
     def visualize_tree(graph):
         global fig
@@ -759,9 +761,13 @@ def get_block_number(table):
 
 
 def create_block_visualization():
+    for widget in window.winfo_children():
+        widget.destroy()
     # Parsing readinfo.json to get the reads and hits for each type of block
     with open("readinfo.json", 'r') as file:
         data = json.load(file)
+    with open("ctid_results.json", 'r') as ctid_file:
+        ctid_data = json.load(ctid_file)
     reads_dict = {}
     for item in data:
         key = item[2]
@@ -775,60 +781,87 @@ def create_block_visualization():
             "tidx_blks_read": 0 if item[9] is None else item[9],
             "tidx_blks_hit": 0 if item[10] is None else item[10],
         }
-        reads_dict[key] = values
+        all_values_zero = all(value == 0 for value in values.values())
+        if(all_values_zero):
+            pass
+        else:
+            reads_dict[key] = values
     table_list = list(reads_dict.keys())
     print(reads_dict)
     print(table_list)
-    root = tk.Tk()
+    # root = tk.Tk()
     table_var = ctk.StringVar()
-    root.title("Block Visualization")
-    canvas_frame = ctk.CTkFrame(root, bg_color="white")
+    # root.title("Block Visualization")
+    dropdown_frame = ctk.CTkFrame(window, bg_color="white")
+    dropdown_frame.pack(side=ctk.TOP, expand=True, fill=ctk.BOTH)
+    canvas_frame = ctk.CTkFrame(window, bg_color="white", border_color="white")
     canvas_frame.pack(side=ctk.LEFT, expand=True, fill=ctk.BOTH)
-    fig = get_pie_chart("lineitem", reads_dict)
+    fig = get_pie_chart(table_list[1], reads_dict)
     ctid_list = []
 
     def on_table_select(choice):
         #When you select the dropdown on the left, this is the logic that updates the plot that is drawn and the dropdown on the right for each block id
-        nonlocal block_grid
+        nonlocal pie_chart_grid
         nonlocal ctid_list
-        nonlocal ctid_dropdown
         fig = get_pie_chart(choice, reads_dict)
-        block_grid.figure = fig  
-        block_grid.draw()
+        pie_chart_grid.figure = fig  
+        pie_chart_grid.draw()
         ctid_list = get_block_number(choice)
         print(ctid_list)
-        ctid_dropdown.configure(values = ctid_list)
 
-    table_dropdown = ctk.CTkComboBox(canvas_frame, variable=table_var, values=table_list, bg_color="white", command=on_table_select)
-    block_grid = FigureCanvasTkAgg(fig, master=canvas_frame)
-    block_grid.draw()
-    table_dropdown.pack()
-    block_grid.get_tk_widget().pack()
+    table_dropdown = ctk.CTkComboBox(dropdown_frame, variable=table_var, values=table_list, bg_color="white", command=on_table_select)
+    dropdown_label = ctk.CTkLabel(dropdown_frame, text="Select a Table : ", font=("Arial", 14))
+    quit_button = ctk.CTkButton(dropdown_frame, text="Quit", command=return_to_main)
+    dropdown_label.pack(side=ctk.LEFT)
+    pie_chart_grid = FigureCanvasTkAgg(fig, master=canvas_frame)
+    pie_chart_grid.draw()
+    table_dropdown.pack(side=ctk.LEFT)
+    quit_button.pack(side=ctk.RIGHT)
+    pie_chart_grid.get_tk_widget().pack()
 
-    info_frame = ctk.CTkFrame(root, bg_color="white",fg_color="white")
+    info_frame = ctk.CTkFrame(window, bg_color="white",fg_color="white")
     info_frame.pack(side=ctk.RIGHT, fill=ctk.BOTH, expand=True)    
-    ctid_var = ctk.StringVar()
     
-    def on_ctid_select(choice):
-        #This is just a wrapper function because tkinter combo box works better if command argument function has only one argument
-        update_grid(choice, scrollable_frame)
+    block_grid = ctk.CTkCanvas(info_frame, width=600, height=600)
+    block_grid_label = ctk.CTkLabel(info_frame, text="Block Reads Heatmap", font=("Arial",16))
+    block_grid_label.pack()
+    block_grid.pack()
 
-    ctid_dropdown = ctk.CTkComboBox(info_frame, variable=ctid_var, values=ctid_list, command=on_ctid_select, bg_color="white")
-    ctid_dropdown.pack()
+    max_blocks = 36
+    num_blocks = len(ctid_data)
+    if num_blocks > max_blocks:
+        n = math.ceil(num_blocks / max_blocks)
+        print(f"n: {n}")
+        aggregated_data = {}
+        for i in range(0, num_blocks, n):
+            block_ids = list(ctid_data.keys())[i:i+n]
+            total_reads = sum(ctid_data[ctid] for ctid in block_ids if ctid in ctid_data)
+            aggregated_data[f"{block_ids[0]}-{block_ids[-1]}"] = total_reads
+        ctid_data = aggregated_data
+    print(num_blocks)
 
-    # Table (Treeview) for displaying tuples
-    # TODO - modify this to have a better output format
-    scrollable_frame = ctk.CTkScrollableFrame(info_frame,bg_color="white")
-    scrollable_frame.pack(expand=True, fill='both')
-    
-    # Run the Tkinter event loop
-    root.config(bg='white')
-    root.mainloop()
+    block_size = 100
+    grid_size = 6
+    for ctid, reads in ctid_data.items():
+        index = list(ctid_data.keys()).index(ctid)
+        x0 = (index % grid_size) * block_size
+        y0 = (index // grid_size) * block_size
+        x1 = x0 + block_size
+        y1 = y0 + block_size
+        color = get_hue(reads)
+        rect = block_grid.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
+        text_position = (x0 + block_size / 2, y0 + block_size / 2)  # Center of the block
+        if(reads < 15):
+            text_color = "black"
+        else:
+            text_color = "white"
+        text = block_grid.create_text(text_position, text=f"CTID\n{ctid}\nReads: {reads}", fill=text_color, font=("Arial", 10)) 
 
-# TODO - comment this out when submitting final code
-# create_block_visualization()
 
 def frontend():
     logging.basicConfig(format='%(levelname)s: Line %(lineno)d - %(message)s', level=logging.INFO)
     createLoginWindow()
     return
+
+# TODO - comment this out when submitting final code
+# create_block_visualization()
