@@ -84,7 +84,7 @@ def login(port_entry, host_entry, database_entry, user_entry, password_entry, er
     
     data = {"dbname": database, "username": user, "password": password, "host": host, "port": port}
     try:
-        response = requests.post("http://127.0.0.1:5000/connection", json=data)
+        response = requests.post(f"http://127.0.0.1:5000/connection", json=data)
         token = response.json().get('token')
 
         if response.status_code==200:
@@ -193,7 +193,7 @@ def submitQuery():
         data = {"query": query}
         try:
             logging.debug(f"{query}")
-            request = requests.Request("POST", "http://127.0.0.1:5000/query", json=data)
+            request = requests.Request("POST", f"http://127.0.0.1:5000/query", json=data)
 
             default_headers = request.headers
             custom_header = {'Authorization': token}
@@ -852,7 +852,7 @@ def create_block_visualization():
         block_grid.delete("all")
         data = {"table": choice}
         try:
-            request = requests.Request("POST", "http://127.0.0.1:5000/visuals", json=data)
+            request = requests.Request("POST", f"http://127.0.0.1:5000/visuals", json=data)
             default_headers = request.headers
             custom_header = {'Authorization': token}
             default_headers.update(custom_header)

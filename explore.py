@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 import re
 import pdb
 import logging
+import signal
 # Storing the DB Connections and credentials in memory
 CONNECTIONS = {}
 
@@ -78,16 +79,16 @@ def extract_scan_info(table, block=-1):
 
     traverse_plans(plan)
     relation, filter = scan_info[-1][0], scan_info[-1][1]
-    if block==-1:
+    if block == -1:
         if filter != "N/A":
             query = f"WITH all_blocks AS ( SELECT DISTINCT (ctid::text::point)[0] AS block_id FROM {relation} ) SELECT ab.block_id, COALESCE(COUNT(*), 0) AS tuple_count FROM all_blocks ab LEFT JOIN {relation} ON ab.block_id = ({relation}.ctid::text::point)[0] AND {filter} GROUP BY ab.block_id ORDER BY ab.block_id;"
         else:
             query = f"WITH all_blocks AS ( SELECT DISTINCT (ctid::text::point)[0] AS block_id FROM {relation} ) SELECT ab.block_id, COALESCE(COUNT(*), 0) AS tuple_count FROM all_blocks ab LEFT JOIN {relation} ON ab.block_id = ({relation}.ctid::text::point)[0] GROUP BY ab.block_id ORDER BY ab.block_id;"
     else:
         if filter != "N/A":
-            query = f"SELECT * FROM {relation} WHERE {filter} AND (ctid::text::point)[0] = {block}"
+            query = f"WITH all_blocks AS ( SELECT (ctid::text::point)[1] AS tuple_id, * FROM {relation} WHERE (ctid::text::point)[0] = {block}) SELECT ab.*, CASE WHEN bc.tuple_id IS NOT NULL THEN 'Yes' ELSE 'No' END AS result_column FROM all_blocks ab LEFT JOIN (SELECT (ctid::text::point)[1] as tuple_id, * FROM {relation} WHERE (ctid::text::point)[0] = {block} AND {filter}) as bc ON ab.tuple_id = bc.tuple_id;"
         else:
-            query = f"SELECT * FROM {relation} WHERE (ctid::text::point)[0] = {block}"
+            query = f"WITH all_blocks AS ( SELECT (ctid::text::point)[1] AS tuple_id, * FROM {relation} WHERE (ctid::text::point)[0] = {block}) SELECT ab.*, CASE WHEN bc.tuple_id IS NOT NULL THEN 'Yes' ELSE 'No' END AS result_column FROM all_blocks ab LEFT JOIN (SELECT (ctid::text::point)[1] as tuple_id, * FROM {relation} WHERE (ctid::text::point)[0] = {block}) as bc ON ab.tuple_id = bc.tuple_id;"
 
     return query
 
@@ -144,10 +145,11 @@ def tuples_in_blocks():
         data = request.get_json()
         table = data.get('table')
         block = data.get('block')
-        all_tuples = execute_sql_query(CONNECTIONS[token], f"SELECT * FROM {table} WHERE (ctid::text::point)[0] = {block}")
+        column_names = execute_sql_query(CONNECTIONS[token], f"SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = '{table}';")
         accessed_tuples = execute_sql_query(CONNECTIONS[token], extract_scan_info(table, block))
+        column_names = [name[0] for name in column_names]
 
-        return {"accessed": accessed_tuples, "all": all_tuples}, 200
+        return {"column_names": column_names, "accessed": accessed_tuples}, 200
     except Exception as e:
         logging.error(f"Error while trying to access block level tuples: {e}")
         return {"error": str(e)}, 400
