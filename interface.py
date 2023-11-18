@@ -849,38 +849,50 @@ def create_block_visualization():
     ctid_list = []
 
     def update_heatmap(choice, block_grid):
-        with open("ctid_results.json", 'r') as ctid_file:
-            ctid_data = json.load(ctid_file)
-        block_size = 100
-        grid_size = 6
-        block_grid.delete(all)
-        #Heatmap Code Starts Here
-        max_blocks = 36
-        num_blocks = len(ctid_data)
-        if num_blocks > max_blocks:
-            n = math.ceil(num_blocks / max_blocks)
-            print(f"n: {n}")
-            aggregated_data = {}
-            for i in range(0, num_blocks, n):
-                block_ids = list(ctid_data.keys())[i:i+n]
-                total_reads = sum(ctid_data[ctid] for ctid in block_ids if ctid in ctid_data)
-                aggregated_data[f"{block_ids[0]}-{block_ids[-1]}"] = total_reads
-            ctid_data = aggregated_data
-        print(num_blocks)
-        for ctid, reads in ctid_data.items():
-            index = list(ctid_data.keys()).index(ctid)
-            x0 = (index % grid_size) * block_size
-            y0 = (index // grid_size) * block_size
-            x1 = x0 + block_size
-            y1 = y0 + block_size
-            color = get_hue(reads)
-            rect = block_grid.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
-            text_position = (x0 + block_size / 2, y0 + block_size / 2)  # Center of the block
-            if(reads < 15):
-                text_color = "black"
-            else:
-                text_color = "white"
-            text = block_grid.create_text(text_position, text=f"CTID\n{ctid}\nReads: {reads}", fill=text_color, font=("Arial", 10)) 
+        block_grid.delete("all")
+        data = {"table": choice}
+        try:
+            request = requests.Request("POST", "http://127.0.0.1:5000/visuals", json=data)
+            default_headers = request.headers
+            custom_header = {'Authorization': token}
+            default_headers.update(custom_header)
+            prepared_request = request.prepare()
+            session = requests.Session()
+            response = session.send(prepared_request)
+            ctid_data = response.json()
+
+            block_size = 100
+            grid_size = 6
+            block_grid.delete(all)
+            #Heatmap Code Starts Here
+            max_blocks = 36
+            num_blocks = len(ctid_data)
+            if num_blocks > max_blocks:
+                n = math.ceil(num_blocks / max_blocks)
+                print(f"n: {n}")
+                aggregated_data = {}
+                for i in range(0, num_blocks, n):
+                    block_ids = list(ctid_data.keys())[i:i+n]
+                    total_reads = sum(ctid_data[ctid] for ctid in block_ids if ctid in ctid_data)
+                    aggregated_data[f"{block_ids[0]}-{block_ids[-1]}"] = total_reads
+                ctid_data = aggregated_data
+            print(num_blocks)
+            for ctid, reads in ctid_data.items():
+                index = list(ctid_data.keys()).index(ctid)
+                x0 = (index % grid_size) * block_size
+                y0 = (index // grid_size) * block_size
+                x1 = x0 + block_size
+                y1 = y0 + block_size
+                color = get_hue(reads)
+                rect = block_grid.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
+                text_position = (x0 + block_size / 2, y0 + block_size / 2)  # Center of the block
+                if(reads < 15):
+                    text_color = "black"
+                else:
+                    text_color = "white"
+                text = block_grid.create_text(text_position, text=f"CTID\n{ctid}\nReads: {reads}", fill=text_color, font=("Arial", 10)) 
+        except Exception as e:
+            logging.error(e)
     
     info_frame = ctk.CTkFrame(window, bg_color="white",fg_color="white")
     block_grid = ctk.CTkCanvas(info_frame, width=600, height=600)
