@@ -1,12 +1,12 @@
 [
   {
-    "Execution Time": 44.678,
+    "Execution Time": 0.541,
     "Plan": {
       "Actual Loops": 1,
-      "Actual Rows": 150000,
-      "Actual Startup Time": 0.035,
-      "Actual Total Time": 34.784,
-      "Alias": "customer",
+      "Actual Rows": 25,
+      "Actual Startup Time": 0.023,
+      "Actual Total Time": 0.026,
+      "Alias": "nation",
       "Async Capable": false,
       "Local Dirtied Blocks": 0,
       "Local Hit Blocks": 0,
@@ -14,28 +14,24 @@
       "Local Written Blocks": 0,
       "Node Type": "Seq Scan",
       "Output": [
-        "c_custkey",
-        "c_name",
-        "c_address",
-        "c_nationkey",
-        "c_phone",
-        "c_acctbal",
-        "c_mktsegment",
-        "c_comment"
+        "n_nationkey",
+        "n_name",
+        "n_regionkey",
+        "n_comment"
       ],
       "Parallel Aware": false,
-      "Plan Rows": 150000,
-      "Plan Width": 165,
-      "Relation Name": "customer",
+      "Plan Rows": 170,
+      "Plan Width": 434,
+      "Relation Name": "nation",
       "Schema": "public",
       "Shared Dirtied Blocks": 0,
-      "Shared Hit Blocks": 3736,
+      "Shared Hit Blocks": 1,
       "Shared Read Blocks": 0,
       "Shared Written Blocks": 0,
       "Startup Cost": 0.0,
       "Temp Read Blocks": 0,
       "Temp Written Blocks": 0,
-      "Total Cost": 5236.0
+      "Total Cost": 11.7
     },
     "Planning": {
       "Local Dirtied Blocks": 0,
@@ -43,13 +39,13 @@
       "Local Read Blocks": 0,
       "Local Written Blocks": 0,
       "Shared Dirtied Blocks": 0,
-      "Shared Hit Blocks": 100,
+      "Shared Hit Blocks": 65,
       "Shared Read Blocks": 0,
       "Shared Written Blocks": 0,
       "Temp Read Blocks": 0,
       "Temp Written Blocks": 0
     },
-    "Planning Time": 3.309,
+    "Planning Time": 3.219,
     "Triggers": []
   }
 ]

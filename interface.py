@@ -212,7 +212,7 @@ def submitQuery():
                 queryOutput = result.get('results')
                 logging.debug(f"Query Output: {queryOutput}")
                 readOutput = result.get('statistics') + result.get('count')
-                logging.debug(f"Stats Output: {readOutput}")
+                logging.debug(f"Stats and Count Output: {readOutput}")
 
                 # Write the results of the request in a file for faster processing
                 with open(QUERY_PLAN_JSON, 'w') as f:
@@ -758,6 +758,8 @@ def get_pie_chart(table,reads_dict):
     
 def get_block_number(count):
     # This is where I get the number of blocks in a relation to populate the dropdown on the right side of the block visualization
+    if not int(count):
+        count = int(count)
     if(count == 1):
         return ["1"]
     print("get block number")
@@ -772,7 +774,7 @@ def create_ctid_table():
         data = json.load(file)
     reads_dict = {}
     for item in data[:-1]:
-        key = item[3]
+        key = item[2]
         values = {
             "heap_blks_read": 0 if item[3] is None else item[3],
             "heap_blks_hit": 0 if item[4] is None else item[4],
@@ -809,33 +811,49 @@ def create_ctid_table():
     canvas.pack(side='left', fill=ctk.BOTH, expand=True)
     
     def populate_table():
-        table_name = table_dropdown.get()
-        ctid_value = ctid_dropdown.get()
-        print(f"table name: {table_name}, ctid value: {ctid_value}")
-        #TODO: call endpoint here, then use entry.insert() to control what values are being input into the cell
-        for widget in table_frame.winfo_children():
-            widget.destroy()
-        read = True
-        # TODO: change this based on the output from the API call
-        rows, cols = 10, 10
-        for r in range(rows):
-            for c in range(cols):
-                #TODO - change this condition to if the block was read
-                if read:
-                    fg_color = "e7ffce"
-                fg_color = "white"
-                entry = ctk.CTkEntry(table_frame, width=20, fg_color=fg_color)
-                entry.grid(row=r, column=c, sticky='nsew')
-                #TODO: change this based on the actual data
-                entry.insert(0, "Data") 
+        try:
+            table_name = table_dropdown.get()
+            ctid_value = ctid_dropdown.get()
+            print(f"table name: {table_name}, ctid value: {ctid_value}")
+            data = {"table": table_name, "block": str(int(ctid_value)-1)}
+            request = requests.Request("POST", f"http://127.0.0.1:5000/blocks", json=data)
+            default_headers = request.headers
+            custom_header = {'Authorization': token}
+            default_headers.update(custom_header)
+            prepared_request = request.prepare()
+            session = requests.Session()
+            response = session.send(prepared_request)
+            col_names = response.json().get('column_names')
+            logging.debug(f"Column Names: {col_names}")
+            tuples = response.json().get('accessed')
+            logging.debug(f"Tuples: {tuples}")
+            #TODO: call endpoint here, then use entry.insert() to control what values are being input into the cell
+            for widget in table_frame.winfo_children():
+                widget.destroy()
+            # TODO: change this based on the output from the API call
+            rows, cols = len(tuples), len(col_names)
+            for r in range(rows):
+                for c in range(1, cols+1):
+                    #TODO - change this condition to if the block was read
+                    if tuples[r][-1] == "Yes":
+                        fg_color = "#e7ffce"
+                    else:
+                        fg_color = "white"
+                    entry = ctk.CTkEntry(table_frame, width=20, fg_color=fg_color)
+                    entry.grid(row=r, column=c, sticky='nsew')
+                    #TODO: change this based on the actual data
+                    entry.insert(0, tuples[r][c])
 
-        # Configure weight for columns and rows
-        for i in range(cols):
-            table_frame.grid_columnconfigure(i, weight=1)
-        for i in range(rows):
-            table_frame.grid_rowconfigure(i, weight=1)
+            # Configure weight for columns and rows
+            for i in range(cols):
+                table_frame.grid_columnconfigure(i, weight=1)
+            for i in range(rows):
+                table_frame.grid_rowconfigure(i, weight=1)
 
-        table_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+            table_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox()))
+            
+        except Exception as e:
+            logging.error(f"Error while trying to execute the tuples endpoint: {e}")
     
     def update_ctid_dropdown(choice):
         print(f"choice: {choice}")
@@ -847,7 +865,7 @@ def create_ctid_table():
         submit_button.configure(state=tk.NORMAL, require_redraw=True)
 
     table_dropdown_label = ctk.CTkLabel(dropdown_frame, text="Select a Table")
-    table_dropdown = ctk.CTkComboBox(dropdown_frame, values=table_list, command=update_ctid_dropdown)
+    table_dropdown = ctk.CTkComboBox(dropdown_frame, values=table_list, command=update_ctid_dropdown, variable="Table Name")
     ctid_dropdown_label = ctk.CTkLabel(dropdown_frame, text="Select a CTID")
     ctid_dropdown = ctk.CTkComboBox(dropdown_frame, state=tk.DISABLED, command=enable_submit)
     submit_button = ctk.CTkButton(dropdown_frame, text="Submit", command=populate_table, state=tk.DISABLED)
@@ -864,7 +882,7 @@ def create_ctid_table():
     def configure_canvas(event):
         canvas.itemconfig(canvas_window, width=event.width)
 
-    canvas.bind("<Configure>", configure_canvas)
+    # canvas.bind("<Configure>", configure_canvas)
     # # Table drawing starts here
     # rows, cols = 10, 10  
     # for r in range(rows):
@@ -890,7 +908,7 @@ def create_block_visualization():
         data = json.load(file)
     reads_dict = {}
     for item in data[:-1]:
-        key = item[3]
+        key = item[2]
         values = {
             "heap_blks_read": 0 if item[3] is None else item[3],
             "heap_blks_hit": 0 if item[4] is None else item[4],
@@ -916,7 +934,7 @@ def create_block_visualization():
     dropdown_frame.pack(side=ctk.TOP, expand=True, fill=ctk.BOTH)
     canvas_frame = ctk.CTkFrame(window, bg_color="white", border_color="white")
     canvas_frame.pack(side=ctk.LEFT, expand=True, fill=ctk.BOTH)
-    fig = get_pie_chart(table_list[1], reads_dict)
+    fig = get_pie_chart(table_list[0], reads_dict)
     ctid_list = []
 
     def update_heatmap(choice, block_grid):
@@ -931,46 +949,49 @@ def create_block_visualization():
             session = requests.Session()
             response = session.send(prepared_request)
             ctid_data = response.json()
-
-            block_size = 100
-            grid_size = 6
-            block_grid.delete(all)
-            #Heatmap Code Starts Here
-            max_blocks = 36
-            num_blocks = len(ctid_data)
-            if num_blocks > max_blocks:
-                n = math.ceil(num_blocks / max_blocks)
-                print(f"n: {n}")
-                aggregated_data = {}
-                for i in range(0, num_blocks, n):
-                    block_ids = list(ctid_data.keys())[i:i+n]
-                    total_reads = sum(ctid_data[ctid] for ctid in block_ids if ctid in ctid_data)
-                    aggregated_data[f"{block_ids[0]}-{block_ids[-1]}"] = total_reads
-                ctid_data = aggregated_data
-            print(num_blocks)
-            for ctid, reads in ctid_data.items():
-                index = list(ctid_data.keys()).index(ctid)
-                x0 = (index % grid_size) * block_size
-                y0 = (index // grid_size) * block_size
-                x1 = x0 + block_size
-                y1 = y0 + block_size
-                color = get_hue(reads)
-                rect = block_grid.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
-                text_position = (x0 + block_size / 2, y0 + block_size / 2)  # Center of the block
-                if(reads < 15):
-                    text_color = "black"
-                else:
-                    text_color = "white"
-                text = block_grid.create_text(text_position, text=f"CTID\n{ctid}\nReads: {reads}", fill=text_color, font=("Arial", 10)) 
+            if response.status_code == 200:
+                block_size = 100
+                grid_size = 6
+                block_grid.delete(all)
+                #Heatmap Code Starts Here
+                max_blocks = 36
+                num_blocks = len(ctid_data)
+                if num_blocks > max_blocks:
+                    n = math.ceil(num_blocks / max_blocks)
+                    print(f"n: {n}")
+                    aggregated_data = {}
+                    for i in range(0, num_blocks, n):
+                        block_ids = list(ctid_data.keys())[i:i+n]
+                        total_reads = sum(ctid_data[ctid] for ctid in block_ids if ctid in ctid_data)
+                        aggregated_data[f"{block_ids[0]}-{block_ids[-1]}"] = total_reads
+                    ctid_data = aggregated_data
+                print(num_blocks)
+                for ctid, reads in ctid_data.items():
+                    index = list(ctid_data.keys()).index(ctid)
+                    x0 = (index % grid_size) * block_size
+                    y0 = (index // grid_size) * block_size
+                    x1 = x0 + block_size
+                    y1 = y0 + block_size
+                    color = get_hue(reads)
+                    rect = block_grid.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
+                    text_position = (x0 + block_size / 2, y0 + block_size / 2)  # Center of the block
+                    if(reads < 15):
+                        text_color = "black"
+                    else:
+                        text_color = "white"
+                    text = block_grid.create_text(text_position, text=f"CTID\n{ctid}\nReads: {reads}", fill=text_color, font=("Arial", 10)) 
+            else:
+                raise Exception(response.json().get('error'))
         except Exception as e:
             logging.error(e)
+            
     
     info_frame = ctk.CTkFrame(window, bg_color="white",fg_color="white")
     block_grid = ctk.CTkCanvas(info_frame, width=600, height=600)
     block_grid_label = ctk.CTkLabel(info_frame, text="Block Reads Heatmap", font=("Arial",16))
     block_grid_label.pack()
     block_grid.pack()
-    update_heatmap(table_list[1], block_grid)
+    update_heatmap(table_list[0], block_grid)
     
     def on_table_select(choice):
         #When you select the dropdown on the left, this is the logic that updates the plot that is drawn and the dropdown on the right for each block id
@@ -979,8 +1000,8 @@ def create_block_visualization():
         fig = get_pie_chart(choice, reads_dict)
         pie_chart_grid.figure = fig  
         pie_chart_grid.draw()
-        ctid_list = get_block_number(choice)
-        print(ctid_list)
+        # ctid_list = get_block_number(choice)
+        # print(ctid_list)
         update_heatmap(choice, block_grid)
 
     table_dropdown = ctk.CTkComboBox(dropdown_frame, variable=table_var, values=table_list, bg_color="white", command=on_table_select)

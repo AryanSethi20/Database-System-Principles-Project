@@ -8,6 +8,7 @@ import re
 import pdb
 import logging
 import signal
+import time
 # Storing the DB Connections and credentials in memory
 CONNECTIONS = {}
 
@@ -35,6 +36,7 @@ def execute_sql_query(conn, query):
         results = cur.fetchall()
         # Convert the result to JSON Format
         explain_json = json.loads(json.dumps(results, default=str))
+        conn.commit()
         return explain_json
     except Exception as e:
         print(f"Failed to execute query: {e}")
@@ -52,6 +54,8 @@ def run_explain_query(conn, query, explain="BUFFERS ON, ANALYZE ON, COSTS ON, VE
         result = cur.fetchone()
         # Convert the result to JSON
         explain_json = json.loads(json.dumps(result[0]))
+        conn.commit()
+        
         return explain_json
 
     except Exception as e:
@@ -69,16 +73,19 @@ def extract_scan_info(table, block=-1):
     def traverse_plans(node):
         if "Node Type" in node and "Scan" in node["Node Type"]:
             relation_name = node.get("Relation Name", "N/A")
+            alias_name = node.get("Alias", "N/A")
             if relation_name == table:
               filter_condition = node.get("Filter", "N/A")
-              scan_info.append((relation_name, filter_condition))
+              scan_info.append((relation_name, alias_name, filter_condition))
 
         if "Plans" in node:
             for subplan in node["Plans"]:
                 traverse_plans(subplan)
 
     traverse_plans(plan)
-    relation, filter = scan_info[-1][0], scan_info[-1][1]
+    relation, alias_name, filter = scan_info[-1][0], scan_info[-1][1], scan_info[-1][2]
+    if relation not in filter:
+        filter = filter.replace(f"{alias_name}.", f"{relation}.")
     if block == -1:
         if filter != "N/A":
             query = f"WITH all_blocks AS ( SELECT DISTINCT (ctid::text::point)[0] AS block_id FROM {relation} ) SELECT ab.block_id, COALESCE(COUNT(*), 0) AS tuple_count FROM all_blocks ab LEFT JOIN {relation} ON ab.block_id = ({relation}.ctid::text::point)[0] AND {filter} GROUP BY ab.block_id ORDER BY ab.block_id;"
@@ -186,10 +193,14 @@ def handle_query():
         query = remove_linebreaks_and_extra_spaces(query)
         
         # Run the explain query
-        stats = execute_sql_query(CONNECTIONS[token], "SELECT pg_stat_reset();")
+        reset = execute_sql_query(CONNECTIONS[token], "SELECT pg_stat_reset();")
+        print("reset", reset)
+        time.sleep(5)
         results = run_explain_query(CONNECTIONS[token], query)
+        # time.sleep(5)
         stats = execute_sql_query(CONNECTIONS[token], "SELECT * FROM pg_statio_user_tables;")
         blocks = execute_sql_query(CONNECTIONS[token], "SELECT relname AS table_name, pg_relation_size(pg_class.oid) / current_setting('block_size')::integer AS total_blocks FROM pg_class JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace WHERE relkind = 'r' AND nspname NOT IN ('pg_catalog', 'information_schema');")
+        
         blocks = [{key: value for key, value in blocks}]
         logging.debug(blocks)
         # If the method to explain query didn't work properly and instead just gave an empty response, this condition is executed
@@ -214,5 +225,5 @@ def backend():
     logging.basicConfig(level=logging.INFO)
     app.run()
 
-# if __name__ == '__main__':
-#     app.run()
+if __name__ == '__main__':
+    app.run()
