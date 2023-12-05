@@ -1,4 +1,4 @@
-# dbsp-project-2
+# Database System Principles Project
 
 ## Project Demo
 https://github.com/AryanSethi20/dbsp-project-2/assets/67143481/11b70edf-b6ad-4b0e-a5bd-708ccf9a243b
