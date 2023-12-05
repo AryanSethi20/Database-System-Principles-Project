@@ -1,10 +1,9 @@
 # dbsp-project-2
 
 ## Project Demo
-[![Database Project](https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.ntaskmanager.com%2Fblog%2Fproject-management-database%2F&psig=AOvVaw2-Vcgjrz43NWGP8FBNY8ob&ust=1701865346159000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCPC1lM2k-IIDFQAAAAAdAAAAABAE)](https://github.com/AryanSethi20/dbsp-project-2/blob/main/assets/Project%20Demo.mov)
-## Please refer to Report Appendix for Installation Instructions
+https://github.com/AryanSethi20/dbsp-project-2/assets/67143481/11b70edf-b6ad-4b0e-a5bd-708ccf9a243b
 
-https://github.com/AryanSethi20/dbsp-project-2/blob/main/assets/Project%20Demo.mov
+## Please refer to Report Appendix for Installation Instructions
 
 ### Run this command for Mac to get Tkinter working
 ```
